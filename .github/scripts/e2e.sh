@@ -22,7 +22,7 @@ import json, sys
 print(json.dumps({"services": {role: {"image": sys.argv[1]} for role in ("migrate", "api", "mcp")}}))
 PY
     compose=(docker compose -p "$project" -f compose.mcp.smoke.yaml -f "$override")
-    # shellcheck disable=SC2329 # Invoked by the EXIT trap in this subshell.
+    # shellcheck disable=SC2317,SC2329 # Invoked by the EXIT trap in this subshell.
     cleanup_mcp() {
         "${compose[@]}" down --volumes --remove-orphans >/dev/null
         rm -f "$override"
@@ -42,7 +42,7 @@ run_mcp_keys() (
     export VOXRIVA_TEST_URL="http://127.0.0.1:$VOXRIVA_MCP_KEYS_PORT"
     export VOXRIVA_MCP_KEYS_IMAGE="voxriva-mcp:ci-keys"
     compose=(docker compose -p "$VOXRIVA_TEST_PROJECT" -f compose.mcp-keys-test.yaml)
-    # shellcheck disable=SC2329 # Invoked by the EXIT trap in this subshell.
+    # shellcheck disable=SC2317,SC2329 # Invoked by the EXIT trap in this subshell.
     cleanup_keys() { "${compose[@]}" down --volumes --remove-orphans >/dev/null; }
     trap cleanup_keys EXIT
     npm --prefix frontend run build
