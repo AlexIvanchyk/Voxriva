@@ -1,4 +1,4 @@
-# GitHub automation prepared for review
+# GitHub automation
 
 These workflows belong at the repository root. Application commands run inside
 `voxriva/`; the source tree is not moved or flattened. Preparing these files does
