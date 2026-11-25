@@ -1,0 +1,8 @@
+{# Keep the repository link local-rendered; omit the live GitHub statistics component. #}
+<a href="{{ config.repo_url | e }}" title="Open the source repository" class="md-source">
+  <div class="md-source__icon md-icon">
+    {% set icon = config.theme.icon.repo or "fontawesome/brands/git-alt" %}
+    {% include ".icons/" ~ icon ~ ".svg" %}
+  </div>
+  <div class="md-source__repository">{{ config.repo_name }}</div>
+</a>

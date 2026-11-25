@@ -1,0 +1,10 @@
+good-listener 1.2.2
+Upstream README licensing statement (excerpt):
+
+## License
+
+[MIT License](http://zenorocha.mit-license.org/) © Zeno Rocha
+
+The complete MIT permission and warranty text is retained alongside this notice
+in clipboard-2.0.11-LICENSE.txt. The upstream author attribution above applies
+to this component.

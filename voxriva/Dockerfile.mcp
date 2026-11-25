@@ -1,0 +1,19 @@
+ARG PYTHON_IMAGE=python:3.13-slim-trixie@sha256:7249d5587b78209a006dc4a3b5340678f84ea729239193aa559962cd8c1fce50
+FROM ${PYTHON_IMAGE}
+LABEL org.opencontainers.image.title="Voxriva MCP" org.opencontainers.image.licenses="MIT"
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /app
+COPY requirements-runtime.lock requirements-mcp.lock ./
+RUN --mount=type=cache,target=/root/.cache/pip pip install --no-compile -r requirements-runtime.lock -r requirements-mcp.lock setuptools==80.9.0
+COPY pyproject.toml LICENSE THIRD_PARTY_NOTICES.md ./
+COPY backend/ backend/
+RUN pip install --no-cache-dir --no-compile --no-build-isolation --no-deps . && useradd --uid 10001 --create-home voxriva
+# Compile precisely the shared renderer's import graph (including stdlib), keeping
+# its cold start inside the unchanged sandbox CPU limit without compiling SDKs
+# for unrelated cloud delivery providers.
+RUN python -c "import sys, py_compile; from backend.app.features.templates.rendering import DraftContent, _render; from backend.app.features.templates.authoring import diagnostics; draft=DraftContent(subject='Synthetic',text='Synthetic'); diagnostics('email',draft.model_dump()); _render('email',draft,{}); [py_compile.compile(path,doraise=True) for module in list(sys.modules.values()) if isinstance(path:=getattr(module,'__file__',None),str) and path.endswith('.py')]"
+COPY alembic.ini ./
+COPY migrations/ migrations/
+USER 10001
+EXPOSE 8001
+CMD ["python", "-m", "backend.mcp_server", "--host", "0.0.0.0"]

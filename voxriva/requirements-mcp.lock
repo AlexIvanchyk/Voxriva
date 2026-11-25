@@ -1,0 +1,11 @@
+# Additional MCP runtime constraints; install together with requirements-runtime.lock.
+mcp==2.3.0
+mcp-types==2.3.0
+httpx2==2.16.2
+httpcore2==2.16.2
+opentelemetry-api==1.45.2
+PyJWT==2.15.1
+python-multipart==0.0.34
+sse-starlette==3.7.1
+truststore==0.10.5
+

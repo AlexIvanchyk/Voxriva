@@ -1,0 +1,31 @@
+# Keep local state out of Python source archives and package data.
+prune .venv
+prune venv
+prune .git
+prune .aws
+prune .codex
+prune .agents
+prune .idea
+prune .vscode
+prune .pytest_cache
+prune .mypy_cache
+prune .ruff_cache
+prune build
+prune dist
+prune node_modules
+prune frontend/node_modules
+prune frontend/dist
+prune frontend/test-results
+prune frontend/playwright-report
+prune frontend/blob-report
+prune sdk/python/dist
+prune release
+prune secrets
+prune backups
+prune test-results
+prune playwright-report
+prune blob-report
+prune htmlcov
+prune coverage
+global-exclude __pycache__/* *.py[cod] *.tsbuildinfo .DS_Store .coverage .coverage.*
+global-exclude .env .env.* *.env *.sqlite *.sqlite3 *.sqlite-journal *.sqlite3-journal

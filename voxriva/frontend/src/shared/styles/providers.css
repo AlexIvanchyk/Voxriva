@@ -1,0 +1,15 @@
+.provider-intro { display: flex; align-items: center; gap: 18px; padding: 22px; margin: 24px 0; background: #fff; border: 1px solid #dce2ef; border-radius: 14px; }
+.provider-intro > div:nth-child(2) { flex: 1; }
+.provider-intro p { color: #52617d; margin: 6px 0 0; max-width: 730px; line-height: 1.6; }
+.provider-schema-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 18px; }
+.provider-config-summary { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; }
+@media (max-width: 650px) { .provider-intro { flex-wrap: wrap; } .provider-schema-fields { grid-template-columns: 1fr; } }
+
+.member-project-grants { display: flex; flex-direction: column; gap: 10px; }
+.member-project-grant { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; }
+.member-project-grant > strong { min-width: 130px; }
+.member-access-row { padding: 16px; margin-bottom: 16px; border: 1px solid #dce2ef; border-radius: 12px; background: #f9faff; }
+.member-access-row .ant-form-item { margin-bottom: 12px; }
+.keys-toolbar > .ant-select { min-width: 160px; }
+.sidebar .brand { margin-bottom: 28px; }
+

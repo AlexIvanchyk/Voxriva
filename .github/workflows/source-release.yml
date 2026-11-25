@@ -1,0 +1,95 @@
+name: Source prerelease
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Source version without v; must match application/frontend/SDK metadata'
+        required: true
+        default: '0.1.0'
+        type: string
+      publish:
+        description: 'Create a source-only GitHub prerelease from the matching vVERSION tag'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-release-${{ github.repository }}-${{ inputs.version }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_VERSION: ${{ inputs.version }}
+  PUBLISH_REQUESTED: ${{ inputs.publish }}
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Validate source metadata and explicit publication request
+        run: python .github/scripts/source_release.py preflight --version "$RELEASE_VERSION" --publish "$PUBLISH_REQUESTED"
+
+  checks:
+    needs: preflight
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+
+  package:
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Archive only reviewed tracked source from the tested commit
+        run: |
+          python .github/scripts/source_release.py package --version "$RELEASE_VERSION" --output "$RUNNER_TEMP/source-release"
+          python .github/scripts/source_release.py verify --version "$RELEASE_VERSION" --output "$RUNNER_TEMP/source-release"
+      - name: Retain source archives, release notes and checksums
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: source-release-${{ inputs.version }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/source-release/
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    needs: package
+    if: inputs.publish && github.ref_type == 'tag'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: source-release
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: source-release-${{ inputs.version }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/verified-source-release
+      - name: Verify this run's source artifacts before release authentication
+        run: python .github/scripts/source_release.py verify --version "$RELEASE_VERSION" --output "$RUNNER_TEMP/verified-source-release" --publish true
+      - name: Create the source prerelease without replacing an existing release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python .github/scripts/source_release.py publish --version "$RELEASE_VERSION" --output "$RUNNER_TEMP/verified-source-release" --publish true

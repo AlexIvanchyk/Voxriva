@@ -1,0 +1,9 @@
+.deployment-inventory-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 24px 0; }
+.deployment-inventory-summary > div { display: flex; flex-direction: column; gap: 6px; padding: 20px 24px; background: #fff; border: 1px solid #dce2ef; border-radius: 14px; }
+.deployment-inventory-summary strong { font-size: 28px; color: #202a43; }
+.deployment-inventory-summary span { color: #52617d; font-size: 13px; }
+.deployment-inventory-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+.deployment-inventory-filters > .ant-input-search { grid-column: span 2; }
+@media (max-width: 900px) { .deployment-inventory-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .deployment-inventory-summary, .deployment-inventory-filters { grid-template-columns: 1fr; } .deployment-inventory-filters > .ant-input-search { grid-column: auto; } }
+

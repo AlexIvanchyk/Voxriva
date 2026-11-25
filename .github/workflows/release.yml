@@ -1,0 +1,164 @@
+name: Release candidate
+
+# No tag-push or release event publishes implicitly. First run with publish=false
+# to review artifacts. A later explicit dispatch from vVERSION may publish.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version without v; must match application/frontend/SDK metadata'
+        required: true
+        type: string
+      application_package:
+        description: 'Lowercase GHCR owner/package path, without ghcr.io or a tag'
+        required: true
+        type: string
+      mcp_package:
+        description: 'Distinct lowercase GHCR owner/package path for the MCP image'
+        required: true
+        type: string
+      publish:
+        description: 'Explicitly publish the tested images; requires matching vVERSION tag'
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.repository }}-${{ inputs.version }}
+  cancel-in-progress: false
+
+env:
+  APPLICATION_PACKAGE: ${{ inputs.application_package }}
+  MCP_PACKAGE: ${{ inputs.mcp_package }}
+  RELEASE_VERSION: ${{ inputs.version }}
+  PUBLISH_REQUESTED: ${{ inputs.publish }}
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Validate versions, explicit namespaces and publication request
+        run: python .github/scripts/release_metadata.py preflight --root voxriva --version "$RELEASE_VERSION"
+
+  checks:
+    needs: preflight
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+
+  package:
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      DOCKER_DEFAULT_PLATFORM: linux/amd64
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: voxriva/frontend/package-lock.json
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: source-checks-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/source-evidence
+      - name: Configure isolated build and test artifact paths
+        run: |
+          {
+            printf 'CI_SOURCE_EVIDENCE=%s/source-evidence/source-checks.json\n' "$RUNNER_TEMP"
+            printf 'CI_ARTIFACT_DIR=%s/release-tests-%s-%s\n' "$RUNNER_TEMP" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+            printf 'RELEASE_OUTPUT=%s/candidate-%s-%s-%s\n' "$RUNNER_TEMP" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+          } >> "$GITHUB_ENV"
+      - name: Prepare pinned Chromium for the production HTTPS/SMTP smoke
+        working-directory: voxriva/frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npx --no-install playwright install --with-deps chromium
+      - name: Build, test, scan and index exact application and MCP images
+        run: bash .github/scripts/build-candidate.sh "$RELEASE_VERSION" "$GITHUB_SHA" "$RELEASE_OUTPUT"
+      - name: Retain versioned images, SDK wheel, metadata and checksums
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: release-${{ inputs.version }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.RELEASE_OUTPUT }}/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  publish:
+    needs: package
+    if: inputs.publish && github.ref_type == 'tag'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: ghcr-publish
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: release-${{ inputs.version }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/verified-candidate
+      - name: Verify indexed artifacts and loaded image IDs before authenticating
+        run: |
+          {
+            printf 'RELEASE_OUTPUT=%s/verified-candidate\n' "$RUNNER_TEMP"
+            printf 'DOCKER_CONFIG=%s/ghcr-auth\n' "$RUNNER_TEMP"
+          } >> "$GITHUB_ENV"
+          export RELEASE_OUTPUT="$RUNNER_TEMP/verified-candidate"
+          python .github/scripts/release_metadata.py preflight --root voxriva --version "$RELEASE_VERSION"
+          python .github/scripts/release_metadata.py verify --root "$RELEASE_OUTPUT" --version "$RELEASE_VERSION"
+          docker load --input "$RELEASE_OUTPUT/application/voxriva-image.tar"
+          docker load --input "$RELEASE_OUTPUT/mcp/voxriva-mcp-image.tar"
+          python - <<'PY'
+          import json, os, pathlib, subprocess
+          data = json.loads((pathlib.Path(os.environ['RELEASE_OUTPUT']) / 'release.json').read_text())
+          for record in data['images'].values():
+              image = json.loads(subprocess.check_output(['docker', 'image', 'inspect', record['image_id']]))[0]
+              assert image['Id'] == record['image_id']
+              assert image['Config']['Labels']['org.opencontainers.image.revision'] == data['revision']
+              assert image['Config']['Labels']['org.opencontainers.image.version'] == data['version']
+              assert image['Os'] == 'linux' and image['Architecture'] == 'amd64'
+              subprocess.run(['docker', 'tag', record['image_id'], record['reference']], check=True)
+          PY
+      - name: Authenticate only for this explicit publication
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Refuse existing version tags and publish the already tested images
+        run: |
+          # Registry 404 is the only accepted absence. Auth/network errors block.
+          python .github/scripts/publish.py
+      - name: Remove the temporary registry credential
+        if: always()
+        run: rm -rf -- "$DOCKER_CONFIG"
+      - name: Retain registry manifest digests separately from immutable candidate checksums
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: published-digests-${{ inputs.version }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/published-digests.json
+          if-no-files-found: warn # Failed/partial publication still leaves the job failed.
+          retention-days: 90

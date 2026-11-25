@@ -1,0 +1,211 @@
+name: voxriva
+
+x-application: &application
+  image: voxriva:local
+  build: .
+  environment: &application-env
+    VOXRIVA_CONTAINER_MONITORING_ENABLED: "${VOXRIVA_CONTAINER_MONITORING_ENABLED:-true}"
+    VOXRIVA_DATABASE_URL: postgresql+asyncpg://voxriva:voxriva@postgres:5432/voxriva
+    OPENSSL_armcap: "${VOXRIVA_OPENSSL_ARMCAP:-0}"
+    VOXRIVA_DELIVERY_MAX_ATTEMPTS: "${VOXRIVA_DELIVERY_MAX_ATTEMPTS:-3}"
+    VOXRIVA_DELIVERY_RETRY_BASE_SECONDS: "${VOXRIVA_DELIVERY_RETRY_BASE_SECONDS:-5}"
+    VOXRIVA_DELIVERY_RETRY_MAX_SECONDS: "${VOXRIVA_DELIVERY_RETRY_MAX_SECONDS:-60}"
+    VOXRIVA_DELIVERY_PAYLOAD_TTL_SECONDS: "${VOXRIVA_DELIVERY_PAYLOAD_TTL_SECONDS:-86400}"
+    VOXRIVA_DELIVERY_LEASE_SECONDS: "${VOXRIVA_DELIVERY_LEASE_SECONDS:-180}"
+    VOXRIVA_DELIVERY_PROVIDER_CONCURRENCY: "${VOXRIVA_DELIVERY_PROVIDER_CONCURRENCY:-2}"
+    VOXRIVA_DELIVERY_OUTBOX_RESEND_SECONDS: "${VOXRIVA_DELIVERY_OUTBOX_RESEND_SECONDS:-30}"
+    VOXRIVA_WORKER_STALE_SECONDS: "${VOXRIVA_WORKER_STALE_SECONDS:-30}"
+    VOXRIVA_METRICS_TOKEN: "${VOXRIVA_METRICS_TOKEN:-}"
+
+services:
+  api:
+    <<: *application
+    environment:
+      <<: *application-env
+      VOXRIVA_MFA_POLICY: "${VOXRIVA_MFA_POLICY:-optional}"
+      VOXRIVA_SECURE_SESSION_COOKIE: "false"
+      VOXRIVA_REDIS_URL: redis://redis:6379/0
+      VOXRIVA_SNAPSHOT_PATH: /status/containers.json
+      VOXRIVA_PROVIDER_ENCRYPTION_KEY_FILE: /secrets/providers.key
+      VOXRIVA_SMTP_ALLOWED_HOSTS: "${VOXRIVA_SMTP_ALLOWED_HOSTS:-[]}"
+    ports:
+      - "127.0.0.1:${VOXRIVA_PORT:-8080}:8000"
+    volumes:
+      - monitoring:/status:ro
+      - provider-secrets:/secrets:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      secrets-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  migrate:
+    <<: *application
+    command: [alembic, upgrade, head]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  secrets-init:
+    <<: *application
+    environment:
+      OPENSSL_armcap: "${VOXRIVA_OPENSSL_ARMCAP:-0}"
+    user: "0:0"
+    network_mode: none
+    command: [python, -m, backend.app.infrastructure.secrets]
+    volumes:
+      - provider-secrets:/secrets
+
+  mailpit:
+    image: axllent/mailpit:v1.33.1
+    ports:
+      - "127.0.0.1:${VOXRIVA_MAILPIT_PORT:-8025}:8025"
+    volumes:
+      - mailpit:/data
+    environment:
+      MP_DATABASE: /data/mailpit.db
+    healthcheck:
+      test: [CMD, /mailpit, readyz]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: voxriva
+      POSTGRES_PASSWORD: voxriva
+      POSTGRES_DB: voxriva
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U voxriva -d voxriva"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+
+  relay:
+    <<: *application
+    environment:
+      <<: *application-env
+      VOXRIVA_REDIS_URL: redis://redis:6379/0
+    command: [python, -m, backend.app.features.notifications.worker]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "from pathlib import Path; import time; assert time.time()-float(Path('/tmp/voxriva-relay-heartbeat').read_text()) < 10"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  email-worker:
+    <<: *application
+    environment:
+      <<: *application-env
+      VOXRIVA_REDIS_URL: redis://redis:6379/0
+      VOXRIVA_PROVIDER_ENCRYPTION_KEY_FILE: /secrets/providers.key
+      VOXRIVA_SMTP_ALLOWED_HOSTS: "${VOXRIVA_SMTP_ALLOWED_HOSTS:-[]}"
+    command: [celery, -A, "backend.app.features.notifications.worker:celery_app", worker, --queues=email, --concurrency=2, "--hostname=email@%h", --loglevel=INFO]
+    volumes:
+      - provider-secrets:/secrets:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      secrets-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "import socket; from backend.app.features.notifications.worker import celery_app; assert celery_app.control.inspect(destination=['email@'+socket.gethostname()],timeout=2).ping()"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  push-worker:
+    <<: *application
+    environment:
+      <<: *application-env
+      VOXRIVA_REDIS_URL: redis://redis:6379/0
+      VOXRIVA_PROVIDER_ENCRYPTION_KEY_FILE: /secrets/providers.key
+      VOXRIVA_SMTP_ALLOWED_HOSTS: "${VOXRIVA_SMTP_ALLOWED_HOSTS:-[]}"
+    command: [celery, -A, "backend.app.features.notifications.worker:celery_app", worker, --queues=push, --concurrency=2, "--hostname=push@%h", --loglevel=INFO]
+    volumes:
+      - provider-secrets:/secrets:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      secrets-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "import socket; from backend.app.features.notifications.worker import celery_app; assert celery_app.control.inspect(destination=['push@'+socket.gethostname()],timeout=2).ping()"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, --appendonly, "yes"]
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+
+  collector:
+    <<: *application
+    environment:
+      VOXRIVA_CONTAINER_MONITORING_ENABLED: "${VOXRIVA_CONTAINER_MONITORING_ENABLED:-true}"
+    user: "0:0"
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    command:
+      - python
+      - -m
+      - backend.app.features.system.collector
+      - --project
+      - "${COMPOSE_PROJECT_NAME}"
+      - --output
+      - /status/containers.json
+      - --job
+      - migrate
+      - --job
+      - secrets-init
+      - api
+      - postgres
+      - redis
+      - migrate
+      - collector
+      - secrets-init
+      - mailpit
+      - relay
+      - email-worker
+      - push-worker
+    volumes:
+      - type: bind
+        source: "${VOXRIVA_DOCKER_SOCKET:-/var/run/docker.sock}"
+        target: /var/run/docker.sock
+        read_only: true
+        bind:
+          create_host_path: false
+      - monitoring:/status
+
+volumes:
+  postgres:
+  monitoring:
+  provider-secrets:
+  mailpit:
+  redis:
