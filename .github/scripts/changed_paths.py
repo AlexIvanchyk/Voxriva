@@ -12,20 +12,16 @@ def runtime_required(paths: list[str]) -> bool:
         "mkdocs.yml",
         "mkdocs.yaml",
         "requirements-docs.txt",
-        "voxriva/mkdocs.yml",
-        "voxriva/mkdocs.yaml",
-        "voxriva/requirements-docs.txt",
-        "voxriva/requirements-docs.in",
-        "voxriva/requirements-docs.lock",
+        "requirements-docs.in",
+        "requirements-docs.lock",
         ".github/workflows/pages.yml",
         "LICENSE",
-        "voxriva/LICENSE",
     }
     return any(
         not (
             path.endswith(".md")
             or path in docs_config
-            or path.startswith(("docs/", "voxriva/docs/"))
+            or path.startswith("docs/")
         )
         for path in paths
     )

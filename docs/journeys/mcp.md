@@ -13,7 +13,7 @@ to start that stack and bootstrap an administrator. In the dashboard, create a
 project and connect a template to it; the [dashboard guide](../dashboard.md) and
 [workspace setup](workspace.md) explain these tasks.
 
-From the `voxriva/` application directory, add MCP to that same stack:
+From the repository root, add MCP to that same stack:
 
 ```sh
 docker compose -f compose.yaml -f compose.mcp.yaml up -d --build api mcp

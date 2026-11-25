@@ -1,6 +1,6 @@
 # Local fictional demo fixture
 
-For isolated evaluation, use `python3 scripts/example.py` from `voxriva/`.
+For isolated evaluation, use `python3 scripts/example.py` from the repository root.
 It creates an owned Compose installation, reuses the Northstar template/assets,
 and verifies one real Mailpit email. See [evaluation](../../docs/evaluate.md),
 [first API email](../../docs/quickstart.md) and [example tooling](../example/README.md).

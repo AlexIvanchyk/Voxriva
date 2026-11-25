@@ -7,7 +7,7 @@ No runtime dependency is installed or changed by a docs build.
 
 ## Build and preview locally
 
-Run from `voxriva/`:
+Run from the repository root:
 
 ```sh
 python3.13 -m venv /tmp/voxriva-docs-venv
@@ -34,9 +34,9 @@ GitHub link without Material's live repository-statistics requests.
 
 Edit user-journey pages under `docs/journeys/`; edit detailed contracts in the
 existing guides beside them. `mkdocs.yml` owns navigation, search, admonitions
-and linked code tabs. The repository-root README introduces the product on GitHub;
-the application README also serves source/release users. Keep their core claims
-aligned with the documentation home.
+and linked code tabs. The repository-root application README introduces the product
+on GitHub and serves source/release users. Keep its core claims aligned with the
+documentation home.
 
 The landing page leads with the product, three benefits, dashboard and API/SDK/MCP
 entry points, a real product screenshot and a local-start route. Detailed
@@ -89,12 +89,11 @@ build or an automated word count does not establish that this reader check passe
 
 The CI workflow is maintained separately. Its build contract is:
 
-1. Use Python 3.13 and install `voxriva/requirements-docs.lock` from the repository
-   root (or `requirements-docs.lock` from the application root).
+1. Use Python 3.13 and install `requirements-docs.lock` from the repository root.
 2. Set `VOXRIVA_DOCS_SITE_URL` to the **actual** Pages base URL, including the
    repository subpath when applicable.
-3. Run `python -m mkdocs build --strict --config-file voxriva/mkdocs.yml` from the
-   repository root. The configured artifact directory is `voxriva/build/docs/`.
+3. Run `python -m mkdocs build --strict --config-file mkdocs.yml` from the
+   repository root. The configured artifact directory is `build/docs/`.
 4. Publish that static directory only through the owner's configured Pages
    workflow after publication is requested. This task performs no deploy.
 

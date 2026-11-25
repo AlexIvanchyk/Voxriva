@@ -226,7 +226,7 @@ For a local client that launches subprocesses, stdio is also available:
 
 ```json
 {
-  "command": "/absolute/path/voxriva/.venv/bin/python",
+  "command": "/absolute/path/Voxriva/.venv/bin/python",
   "args": ["-m", "backend.mcp_server", "--transport", "stdio"],
   "env": {
     "VOXRIVA_DATABASE_URL_FILE": "/private/path/database-url",

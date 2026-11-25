@@ -1,14 +1,29 @@
-# Local workspace files; application-specific rules live in voxriva/.gitignore.
-.idea/
-.vscode/
-.DS_Store
-.ruff_cache/
+.venv/
+venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .mypy_cache/
+.audit-venv/
+.ci/
+.ruff_cache/
 .coverage
 .coverage.*
+htmlcov/
+coverage/
+node_modules/
+build/
+dist/
+*.tsbuildinfo
+playwright-report/
+blob-report/
+test-results/
+*.egg-info/
+
+# Editor state and private local configuration.
+.idea/
+.vscode/
+.DS_Store
 .aws/
 .env
 .env.*
@@ -17,6 +32,15 @@ __pycache__/
 !.env.*.example
 !*.env.example
 !*.env.*.example
+secrets/
+backups/
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite3-journal
 
-# Generated previews and screenshots are retained locally as evidence.
-/output/
+# Preserve historical candidates/evidence locally, outside source checkouts.
+release/
+
+# Demo credentials, source captures and generated documentation previews.
+output/

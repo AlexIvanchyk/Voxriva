@@ -2,76 +2,56 @@
 
 **Open-source, self-hosted email and push notifications.**
 
-Manage notification templates, languages and deployments in a web dashboard.
-Integrate through the HTTP API or typed Python SDK, and use MCP for AI-assisted
-draft editing. Release content independently of your application, with delivery
+Manage templates, languages and deployments in a web dashboard. Integrate through
+the HTTP API or typed Python SDK, and use MCP for AI-assisted draft editing.
+Release notification content independently of your application, with delivery
 data and provider credentials in your infrastructure.
 
 **MIT license · Self-hosted · Web dashboard · HTTP API · Python SDK · MCP**
 
-[Run locally](voxriva/docs/quickstart.md) · [Dashboard](voxriva/docs/dashboard.md) ·
-[API & SDK](voxriva/docs/journeys/integrate.md) · [MCP](voxriva/docs/journeys/mcp.md) ·
-[Documentation](voxriva/docs/index.md)
+[Run locally](docs/quickstart.md) · [Dashboard](docs/dashboard.md) ·
+[API & SDK](docs/journeys/integrate.md) · [MCP](docs/journeys/mcp.md) ·
+[Documentation](docs/index.md)
 
-- **Change content without an application release.** Preview templates, manage
-  languages, publish immutable versions and deploy or roll back each environment.
-- **Keep control of delivery.** Run the service yourself, connect SMTP, Amazon SES
-  or Firebase Cloud Messaging, and keep credentials and message data in your infrastructure.
-- **Understand each notification.** Validate payloads before sending, retry HTTP
-  requests with idempotency, and inspect the exact template, provider and attempts.
+- **Content releases without application releases:** preview, languages,
+  immutable versions, explicit environment deployments and rollback.
+- **Delivery under your control:** SMTP, Amazon SES and Firebase Cloud Messaging,
+  with local data, provider credentials and no mandatory hosted control plane.
+- **An integration you can inspect:** typed payloads, preflight validation,
+  idempotent HTTP retries and a history of pinned revisions and delivery attempts.
 
-[![Edit HTML and variables alongside the rendered email preview](voxriva/docs/assets/screenshots/email-preview.jpg)](voxriva/docs/dashboard.md)
+[![Edit notification content alongside its rendered preview](docs/assets/screenshots/email-preview.jpg)](docs/dashboard.md)
 
-*Edit → preview → publish → deploy. The dashboard combines an HTML/Jinja editor
-with a live preview, version management and delivery history.*
+*Edit → preview → publish → deploy in the web dashboard. Email editing uses
+HTML/Jinja with a live preview.*
 
-## Try it locally
+## Run from this directory
 
-Have Docker Engine with Compose v2 running and Python 3.10+ on macOS/Linux.
-The first build downloads dependencies and can take several minutes. No cloud
-account, provider credentials, host Node.js or Python packages are needed.
+Requirements: running Docker Engine with Compose v2 and host Python 3.10+ on
+macOS/Linux. A cold source build needs network downloads and can take minutes.
+No cloud account, host Node.js or installed Python packages are needed.
 
 ```sh
-git clone https://github.com/AlexIvanchyk/Voxriva.git
-cd Voxriva/voxriva
 python3 scripts/example.py
 ```
 
-Already have a checkout? Run the launcher from its `voxriva/` directory. It creates
-an isolated fictional workspace, sends a welcome email to local Mailpit, and
-prints the dashboard, inbox and private login-file locations. Follow
-[the quickstart](voxriva/docs/quickstart.md) to send your own API request.
+The launcher creates an isolated fictional workspace, verifies a welcome email in
+local Mailpit, and prints dashboard/inbox URLs and a private login-file location.
+Continue with [the first API request](docs/quickstart.md#load-local-credentials),
+[Python sync/async or curl](docs/journeys/integrate.md), or
+[AI-assisted template editing](docs/journeys/mcp.md).
 
-## Send from your application
+For an existing application, send a template key, recipient/device token and JSON
+context. The environment Delivery key selects the project and environment. See
+[the HTTP contract](docs/api.md) and [self-hosting guide](docs/self-hosting.md).
 
-After the quickstart loads `VOXRIVA_URL` / `VOXRIVA_API_KEY` and you
-[install the SDK](voxriva/docs/journeys/integrate.md#configure-a-local-client):
+## License and release status
 
-```python
-import os
-from voxriva_sdk import Client
+Own code and documentation use [MIT](LICENSE). Dependencies retain their own
+terms; the default stack includes source-available Redis 7.4. The current 0.1.0
+source is a prerelease. Published artifacts, support scope and redistribution
+review are tracked in [release status](docs/release-status.md) and
+[third-party notices](THIRD_PARTY_NOTICES.md).
 
-with Client(os.environ["VOXRIVA_URL"], os.environ["VOXRIVA_API_KEY"]) as client:
-    accepted = client.send(
-        "northstar-welcome", recipient="person@example.test", locale="en",
-        context={"first_name": "Taylor", "account_url": "https://northstar.example.test/account"},
-        idempotency_key="docs:welcome:001",
-    )
-    print(accepted.id, accepted.dashboard_url)
-```
-
-The same operation is available through the [HTTP API](voxriva/docs/api.md).
-[MCP](voxriva/docs/journeys/mcp.md) lets an AI client read and propose template
-drafts; publication and deployment stay explicit dashboard actions.
-
-## Project and community
-
-Voxriva's own code, dashboard, SDK and documentation use [MIT](LICENSE).
-The default stack includes dependencies under other terms, including Redis 7.4
-under source-available licenses. See [release status](voxriva/docs/release-status.md)
-and [third-party notices](voxriva/THIRD_PARTY_NOTICES.md) for the current prerelease
-and redistribution boundaries.
-
-[Self-hosting](voxriva/docs/self-hosting.md) · [Contributing](CONTRIBUTING.md) ·
-[Support](SUPPORT.md) · [Security](SECURITY.md) · [Code of Conduct](CODE_OF_CONDUCT.md) ·
-[Changelog](CHANGELOG.md) · [CI and releases](.github/AUTOMATION.md)
+Contributions, support, security reporting and community guidelines are available
+from [the project guide](docs/community.md).

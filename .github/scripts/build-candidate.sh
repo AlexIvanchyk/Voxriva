@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
-cd "$root/voxriva"
+cd "$root"
 version=${1:?Supply VERSION}
 revision=${2:?Supply the full source revision}
 output=${3:?Supply a fresh absolute output directory}

@@ -1,6 +1,6 @@
 # Local infrastructure
 
-Commands run from `voxriva/`. Use [PRODUCTION.md](../PRODUCTION.md) for coordinated
+Commands run from the repository root. Use [PRODUCTION.md](../PRODUCTION.md) for coordinated
 database/keyring backup, install, restore and upgrades.
 
 ## System health and infrastructure

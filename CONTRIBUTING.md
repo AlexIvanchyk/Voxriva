@@ -7,16 +7,16 @@ Small fixes can go directly to a pull request. Follow the [Code of Conduct](CODE
 
 ## Get a working environment
 
-The repository root contains community files and `.github/`; application commands
-run from its `voxriva/` directory.
+The repository root contains the application, community files and `.github/`.
+Run application commands from this root.
 
 ```sh
 git clone https://github.com/AlexIvanchyk/Voxriva.git
-cd Voxriva/voxriva
+cd Voxriva
 ```
 
-To try the product, use [the isolated quickstart](voxriva/docs/quickstart.md).
-For code changes, follow [native development and verification](voxriva/docs/development.md)
+To try the product, use [the isolated quickstart](docs/quickstart.md).
+For code changes, follow [native development and verification](docs/development.md)
 for Python, Node.js, PostgreSQL, Redis and encryption-keyring setup. Never point
 mutation tests at an existing installation or real application data.
 
@@ -38,7 +38,7 @@ state that explicitly rather than treating it as passed.
 
 ## Documentation changes
 
-From `voxriva/`, install the isolated pinned documentation toolchain and build:
+From the repository root, install the isolated pinned documentation toolchain and build:
 
 ```sh
 python3 -m venv /tmp/voxriva-docs-venv
@@ -46,7 +46,7 @@ python3 -m venv /tmp/voxriva-docs-venv
 /tmp/voxriva-docs-venv/bin/python -m mkdocs build --strict --site-dir /tmp/voxriva-docs-site
 ```
 
-Use [the documentation guide](voxriva/docs/contributing/documentation.md) for
+Use [the documentation guide](docs/contributing/documentation.md) for
 preview, navigation and desktop/mobile review. Keep the landing page readable in
 one minute: product, benefits, dashboard, API/SDK/MCP and the local-start route
 must be visible before architectural detail. Use existing real demo screenshots.
@@ -60,6 +60,6 @@ guaranteed review time is currently established.
 
 Submit only work you have the right to contribute under the project's [MIT license](LICENSE).
 Identify third-party code/assets and their license/provenance explicitly; they
-keep their upstream terms. See [third-party notices](voxriva/THIRD_PARTY_NOTICES.md)
-and [release status](voxriva/docs/release-status.md) before changing distributed
+keep their upstream terms. See [third-party notices](THIRD_PARTY_NOTICES.md)
+and [release status](docs/release-status.md) before changing distributed
 dependencies or proposing release artifacts.

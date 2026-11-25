@@ -18,11 +18,11 @@ CANONICAL = {
     "reference/provider-plugin.md": ROOT / "examples/provider-plugin/README.md",
     "third-party.md": ROOT / "THIRD_PARTY_NOTICES.md",
     "license.md": ROOT / "LICENSE",
-    "contributing.md": ROOT.parent / "CONTRIBUTING.md",
-    "support.md": ROOT.parent / "SUPPORT.md",
-    "security.md": ROOT.parent / "SECURITY.md",
-    "code-of-conduct.md": ROOT.parent / "CODE_OF_CONDUCT.md",
-    "changelog.md": ROOT.parent / "CHANGELOG.md",
+    "contributing.md": ROOT / "CONTRIBUTING.md",
+    "support.md": ROOT / "SUPPORT.md",
+    "security.md": ROOT / "SECURITY.md",
+    "code-of-conduct.md": ROOT / "CODE_OF_CONDUCT.md",
+    "changelog.md": ROOT / "CHANGELOG.md",
 }
 DOWNLOADS = {
     "contracts/delivery-v1.openapi.json": ROOT / "contracts/delivery-v1.openapi.json",
@@ -77,8 +77,6 @@ def on_files(files, config):
         DESTINATIONS[source.resolve()] = uri
     # Source README is a concise product landing page; site links lead home.
     DESTINATIONS[(ROOT / "README.md").resolve()] = "index.md"
-    DESTINATIONS[(ROOT.parent / "README.md").resolve()] = "index.md"
-    DESTINATIONS[(ROOT.parent / "LICENSE").resolve()] = "license.md"
     DESTINATIONS[(ROOT / "sdk/python/LICENSE").resolve()] = "license.md"
     return files
 
@@ -101,7 +99,7 @@ def on_page_markdown(markdown, page, config, files):
             return f'{match["image"]}[{match["label"]}]({uri})'
         retained_evidence = any(
             destination.is_relative_to(directory)
-            for directory in (ROOT / "release", ROOT / "output", ROOT.parent / "output")
+            for directory in (ROOT / "release", ROOT / "output")
         )
         if retained_evidence or (destination.is_file() and destination.suffix.lower() != ".md"):
             # Source-only reports, screenshots and package metadata are not

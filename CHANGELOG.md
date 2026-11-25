@@ -10,7 +10,7 @@ announce a published package or production release.
 
 This release distributes source code and operator documentation. It does not
 announce published container images, a PyPI package or a running production
-installation. See [release notes](voxriva/docs/releases/0.1.0.md).
+installation. See [release notes](docs/releases/0.1.0.md).
 
 ### Added
 
@@ -33,4 +33,4 @@ installation. See [release notes](voxriva/docs/releases/0.1.0.md).
 ### Release preparation
 
 Public artifact namespaces, production platform commitments and dependency
-redistribution review remain open. See [release status](voxriva/docs/release-status.md).
+redistribution review remain open. See [release status](docs/release-status.md).

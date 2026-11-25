@@ -16,11 +16,11 @@ For a new checkout:
 
 ```sh
 git clone https://github.com/AlexIvanchyk/Voxriva.git
-cd Voxriva/voxriva
+cd Voxriva
 python3 scripts/example.py
 ```
 
-If you already have the source, run from its `voxriva/` application directory:
+If you already have the source, run from its repository root:
 
 ```sh
 python3 scripts/example.py

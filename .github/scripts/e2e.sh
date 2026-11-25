@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
-cd "$root/voxriva"
+cd "$root"
 suite=${1:?Supply chromium, cloud, crash, sdk, mcp or mcp-keys}
 : "${CI_ARTIFACT_DIR:?Use an isolated CI artifact directory}"
 mkdir -p "$CI_ARTIFACT_DIR/$suite"
