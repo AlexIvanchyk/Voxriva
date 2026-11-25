@@ -96,7 +96,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd 'pg_isready -U voxriva_ci -d voxriva_ci'
+          --health-cmd "pg_isready -U voxriva_ci -d voxriva_ci"
           --health-interval 5s --health-timeout 3s --health-retries 20
     env:
       TEST_DATABASE_URL: postgresql+asyncpg://voxriva_ci:synthetic-ci-only@127.0.0.1:5432/voxriva_ci
