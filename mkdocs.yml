@@ -3,15 +3,14 @@ site_name: Voxriva
 site_description: Open-source, self-hosted email and push with a web dashboard, HTTP API, Python SDK and MCP.
 repo_url: https://github.com/AlexIvanchyk/Voxriva
 repo_name: AlexIvanchyk/Voxriva
-site_url: !ENV [VOXRIVA_DOCS_SITE_URL, 'http://127.0.0.1:8008/']
+site_url: !ENV [VOXRIVA_DOCS_SITE_URL, 'https://alexivanchyk.github.io/Voxriva/']
 docs_dir: docs
 site_dir: build/docs
 use_directory_urls: true
 strict: true
 copyright: Copyright © 2026 Voxriva contributors · Own code and documentation licensed under MIT
 
-# Public Pages identity remains unset until its hosting URL is assigned.
-# CI may provide the exact Pages base URL through VOXRIVA_DOCS_SITE_URL.
+# CI provides the configured Pages base URL through VOXRIVA_DOCS_SITE_URL.
 theme:
   name: material
   custom_dir: docs/overrides
