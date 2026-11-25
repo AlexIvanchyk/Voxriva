@@ -48,7 +48,7 @@ jobs:
         with:
           python-version: '3.13'
       - name: Validate versions, explicit namespaces and publication request
-        run: python .github/scripts/release_metadata.py preflight --root voxriva --version "$RELEASE_VERSION"
+        run: python .github/scripts/release_metadata.py preflight --root . --version "$RELEASE_VERSION"
 
   checks:
     needs: preflight
@@ -73,7 +73,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: voxriva/frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: source-checks-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -86,7 +86,7 @@ jobs:
             printf 'RELEASE_OUTPUT=%s/candidate-%s-%s-%s\n' "$RUNNER_TEMP" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
           } >> "$GITHUB_ENV"
       - name: Prepare pinned Chromium for the production HTTPS/SMTP smoke
-        working-directory: voxriva/frontend
+        working-directory: frontend
         run: |
           npm ci --no-audit --no-fund
           npx --no-install playwright install --with-deps chromium
@@ -128,7 +128,7 @@ jobs:
             printf 'DOCKER_CONFIG=%s/ghcr-auth\n' "$RUNNER_TEMP"
           } >> "$GITHUB_ENV"
           export RELEASE_OUTPUT="$RUNNER_TEMP/verified-candidate"
-          python .github/scripts/release_metadata.py preflight --root voxriva --version "$RELEASE_VERSION"
+          python .github/scripts/release_metadata.py preflight --root . --version "$RELEASE_VERSION"
           python .github/scripts/release_metadata.py verify --root "$RELEASE_OUTPUT" --version "$RELEASE_VERSION"
           docker load --input "$RELEASE_OUTPUT/application/voxriva-image.tar"
           docker load --input "$RELEASE_OUTPUT/mcp/voxriva-mcp-image.tar"

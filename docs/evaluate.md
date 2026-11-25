@@ -16,7 +16,7 @@ needs network access for image/package downloads and can take several minutes.
 For production requirements and supported scope, see [self-hosting](self-hosting.md)
 and [release status](release-status.md).
 
-From `voxriva/`:
+From the repository root:
 
 ```sh
 python3 scripts/example.py

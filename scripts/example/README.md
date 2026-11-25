@@ -1,6 +1,6 @@
 # First-email example tooling
 
-From `voxriva/`: `python3 scripts/example.py`. Requires Docker/Compose v2 and
+From the repository root: `python3 scripts/example.py`. Requires Docker/Compose v2 and
 Python 3.10+ on macOS/Linux; no pip/npm install is needed on the host. See
 [the first-email guide](../../docs/quickstart.md) for ports, private login,
 integration, repeat behavior and scoped stop/removal.

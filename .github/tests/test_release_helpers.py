@@ -240,12 +240,12 @@ class DocumentationScopeTests(unittest.TestCase):
         self.assertFalse(
             changed_paths.runtime_required(
                 [
-                    "voxriva/docs/mfa.md",
-                    "voxriva/README.md",
+                    "docs/mfa.md",
+                    "README.md",
                     "docs/product-development-plan.md",
-                    "voxriva/mkdocs.yml",
-                    "voxriva/requirements-docs.txt",
-                    "voxriva/requirements-docs.in",
+                    "mkdocs.yml",
+                    "requirements-docs.txt",
+                    "requirements-docs.in",
                     ".github/workflows/pages.yml",
                 ]
             )
@@ -253,16 +253,16 @@ class DocumentationScopeTests(unittest.TestCase):
 
     def test_source_dependency_test_or_ci_changes_require_runtime(self):
         for path in (
-            "voxriva/backend/app/main.py",
-            "voxriva/frontend/package-lock.json",
-            "voxriva/tests/integration/test_images.py",
-            "voxriva/Dockerfile",
+            "backend/app/main.py",
+            "frontend/package-lock.json",
+            "tests/integration/test_images.py",
+            "Dockerfile",
             ".github/scripts/changed_paths.py",
             ".github/workflows/ci.yml",
-            "voxriva/requirements-runtime.lock",
+            "requirements-runtime.lock",
         ):
             self.assertTrue(
-                changed_paths.runtime_required(["voxriva/README.md", path]), path
+                changed_paths.runtime_required(["README.md", path]), path
             )
 
     def test_missing_git_history_fails_closed_and_diff_disables_rename_detection(self):

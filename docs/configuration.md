@@ -13,7 +13,7 @@ matching code, migrations and configuration where relevant.
 | `compose.production.yaml` | Single-host production installation | HTTPS, secure cookies, file-backed secrets, private dependencies and coordinated data operations |
 | Native API/Vite | Feature development | Requires separately configured PostgreSQL/Redis/keyring; does not automatically start delivery processes |
 
-Run commands from `voxriva/`. Do not layer the local Compose file over production.
+Run commands from the repository root. Do not layer the local Compose file over production.
 The [example](evaluate.md) can coexist with the main local stack; do not seed or
 reset an existing installation to evaluate the docs.
 

@@ -1,10 +1,16 @@
 """TEST ONLY: mounted into the isolated cloud-contract Compose stack, never the image."""
 
 import os
+import sys
 from contextlib import contextmanager
 from pathlib import Path
 
-if os.environ.get("VOXRIVA_CLOUD_TEST_DOUBLES") == "1":
+# Only the Compose API/worker entrypoints need cloud transports. Their bounded
+# renderer/rename children inherit the environment but must not import both SDKs
+# during interpreter startup, before running their pure sandboxed work.
+if os.environ.get("VOXRIVA_CLOUD_TEST_DOUBLES") == "1" and os.path.basename(
+    sys.argv[0]
+) in {"uvicorn", "celery"}:
     from uuid import uuid4
 
     import httpx

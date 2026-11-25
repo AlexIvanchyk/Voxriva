@@ -42,7 +42,6 @@ No cloud account or host Node.js is needed.
 From the repository root:
 
 ```sh
-cd voxriva
 python3 scripts/example.py
 ```
 

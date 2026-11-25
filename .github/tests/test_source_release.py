@@ -27,11 +27,11 @@ class SourceReleaseTests(unittest.TestCase):
         })
         environment.start()
         self.addCleanup(environment.stop)
-        (self.root / "voxriva/sdk/python").mkdir(parents=True)
-        (self.root / "voxriva/frontend").mkdir()
-        for relative in ("voxriva/pyproject.toml", "voxriva/sdk/python/pyproject.toml"):
+        (self.root / "sdk/python").mkdir(parents=True)
+        (self.root / "frontend").mkdir()
+        for relative in ("pyproject.toml", "sdk/python/pyproject.toml"):
             (self.root / relative).write_text('[project]\nversion="0.1.0"\n')
-        (self.root / "voxriva/frontend/package.json").write_text('{"version":"0.1.0"}')
+        (self.root / "frontend/package.json").write_text('{"version":"0.1.0"}')
 
     def candidate(self):
         output = self.root / "candidate"
@@ -49,16 +49,16 @@ class SourceReleaseTests(unittest.TestCase):
 
     def test_source_paths_reject_local_state_but_allow_public_test_fixtures(self):
         for path in (
-            ".env", "voxriva/.env.production", "production.env",
-            "voxriva/secrets/tls.key", ".aws/config", "output/report.json",
-            "voxriva/release/image.tar", "voxriva/frontend/node_modules/index.js",
-            "voxriva/data.sqlite3", "../escape", "README.md\nunsafe",
+            ".env", ".env.production", "production.env",
+            "secrets/tls.key", ".aws/config", "output/report.json",
+            "release/image.tar", "frontend/node_modules/index.js",
+            "data.sqlite3", "../escape", "README.md\nunsafe",
         ):
             with self.subTest(path=path), self.assertRaises(ValueError):
                 source.validate_source_entry("100644", path)
         for path in (
-            "voxriva/deploy/production.env.example",
-            "voxriva/frontend/e2e/fixtures/ses-events/signing-key.pem",
+            "deploy/production.env.example",
+            "frontend/e2e/fixtures/ses-events/signing-key.pem",
             ".github/workflows/source-release.yml",
         ):
             source.validate_source_entry("100644", path)
@@ -86,7 +86,7 @@ class SourceReleaseTests(unittest.TestCase):
                 return REVISION + "\n"
             if command[1] == "ls-tree":
                 return b"100644 blob " + b"b" * 40 + b"\tREADME.md\0"
-            self.assertEqual(command[-1], f"{REVISION}:voxriva/docs/releases/0.1.0.md")
+            self.assertEqual(command[-1], f"{REVISION}:docs/releases/0.1.0.md")
             return b"Reviewed source-only notes\n"
 
         def archive(command, **kwargs):
@@ -167,9 +167,9 @@ class SourceReleaseTests(unittest.TestCase):
         )
         result = source.release_notes(prose + code, "0.1.0", "example/source")
         base = "https://github.com/example/source/blob/v0.1.0/"
-        self.assertIn(f"[Quickstart]({base}voxriva/docs/quickstart.md)", result)
-        self.assertIn(f"[Production]({base}voxriva/PRODUCTION.md#prepare-and-install)", result)
-        self.assertIn(f"[Nested]({base}voxriva/docs/journeys/operate.md?plain=1#recovery)", result)
+        self.assertIn(f"[Quickstart]({base}docs/quickstart.md)", result)
+        self.assertIn(f"[Production]({base}PRODUCTION.md#prepare-and-install)", result)
+        self.assertIn(f"[Nested]({base}docs/journeys/operate.md?plain=1#recovery)", result)
         self.assertIn("[Here](#same-page)", result)
         self.assertIn("[Web](https://example.test/guide)", result)
         self.assertIn("`[Inline](../unchanged.md)`", result)

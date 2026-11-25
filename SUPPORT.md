@@ -2,8 +2,8 @@
 
 Use [Voxriva GitHub issues](https://github.com/AlexIvanchyk/Voxriva/issues) for
 questions, reproducible bugs and feature requests. Start with the
-[quickstart](voxriva/docs/quickstart.md), [integration guide](voxriva/docs/journeys/integrate.md)
-or [self-hosting guide](voxriva/docs/self-hosting.md), and search existing issues.
+[quickstart](docs/quickstart.md), [integration guide](docs/journeys/integrate.md)
+or [self-hosting guide](docs/self-hosting.md), and search existing issues.
 
 For help, include:
 
@@ -18,4 +18,4 @@ through [the security policy](SECURITY.md) before posting technical details.
 
 Support is best-effort and community-based. No response-time, managed-service or
 production availability SLA is offered. Current platform and compatibility scope
-is documented in [release status](voxriva/docs/release-status.md).
+is documented in [release status](docs/release-status.md).

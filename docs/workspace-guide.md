@@ -1,7 +1,7 @@
 # Workspace and template guide
 
 Start with the [local quickstart](quickstart.md#start-locally). Commands in this
-guide run from `voxriva/`. Production operations use [PRODUCTION.md](../PRODUCTION.md).
+guide run from the repository root. Production operations use [PRODUCTION.md](../PRODUCTION.md).
 
 ## Projects and navigation
 

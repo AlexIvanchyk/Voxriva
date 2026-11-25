@@ -32,7 +32,7 @@ Please coordinate disclosure until a fix or mitigation can be assessed.
 ## Operating your installation
 
 Operators manage their deployment's access, TLS, host security, provider accounts,
-updates and database/keyring backups. See the [production runbook](voxriva/PRODUCTION.md),
-[MFA guide](voxriva/docs/mfa.md) and [release status](voxriva/docs/release-status.md).
+updates and database/keyring backups. See the [production runbook](PRODUCTION.md),
+[MFA guide](docs/mfa.md) and [release status](docs/release-status.md).
 Local tests and scan output describe their checked scope; they are not a complete
 security audit or a production availability guarantee.

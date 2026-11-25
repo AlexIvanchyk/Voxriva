@@ -25,9 +25,9 @@ def validate_request(root: Path, version: str, revision: str, publish: bool) -> 
     if not re.fullmatch(r"[a-f0-9]{40}", revision):
         raise ValueError("Expected the checked-out full commit SHA")
     versions = [
-        tomllib.loads((root / "voxriva/pyproject.toml").read_text())["project"]["version"],
-        tomllib.loads((root / "voxriva/sdk/python/pyproject.toml").read_text())["project"]["version"],
-        json.loads((root / "voxriva/frontend/package.json").read_text())["version"],
+        tomllib.loads((root / "pyproject.toml").read_text())["project"]["version"],
+        tomllib.loads((root / "sdk/python/pyproject.toml").read_text())["project"]["version"],
+        json.loads((root / "frontend/package.json").read_text())["version"],
     ]
     if versions != [version] * 3:
         raise ValueError("Version must match application, frontend and SDK metadata")
@@ -79,7 +79,7 @@ def provenance(version: str, revision: str) -> dict[str, str]:
 
 def release_notes(markdown: str, version: str, repository: str) -> str:
     """Make source-relative prose links usable on the GitHub Release page."""
-    source_directory = "voxriva/docs/releases"
+    source_directory = "docs/releases"
     link = re.compile(r"(?P<prefix>!?\[[^\]]+\]\()(?P<target>[^)]+)\)")
     inline_code = re.compile(r"(`+)(.*?)\1(?!`)")
 
@@ -137,7 +137,7 @@ def package_source(root: Path, output: Path, version: str, revision: str) -> Non
             metadata, path = os.fsdecode(record).split("\t", 1)
             validate_source_entry(metadata.split()[0], path)
     notes = subprocess.check_output(
-        ["git", "show", f"{revision}:voxriva/docs/releases/{version}.md"], cwd=root
+        ["git", "show", f"{revision}:docs/releases/{version}.md"], cwd=root
     )
     if not notes.strip():
         raise ValueError("Reviewed source-only release notes are required")

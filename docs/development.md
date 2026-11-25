@@ -1,6 +1,6 @@
 # Development and verification
 
-Run commands from `voxriva/`, the application root. Use Python 3.12+ and Node.js
+Run commands from the repository root. Use Python 3.12+ and Node.js
 22+. The image uses pinned Python 3.13; the separately packaged SDK declares
 Python 3.10+. See [release status](release-status.md) for CI targets and
 production platform commitments.

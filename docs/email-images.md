@@ -61,7 +61,7 @@ with Client(os.environ["VOXRIVA_URL"], os.environ["VOXRIVA_API_KEY"]) as client:
 ```
 
 This example uses the [isolated Northstar fixture](evaluate.md) and client
-environment from [API/SDK integration](journeys/integrate.md). Run from `voxriva/`.
+environment from [API/SDK integration](journeys/integrate.md). Run from the repository root.
 
 The helper only bounds/encodes local bytes. The server is authoritative for
 format, decoding, dimensions and combined budgets. Existing SDK context
