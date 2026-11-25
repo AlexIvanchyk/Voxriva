@@ -12,7 +12,7 @@ benchmark-based capacity guarantee is published.
 | Source | [AlexIvanchyk/Voxriva on GitHub](https://github.com/AlexIvanchyk/Voxriva); [quickstart](quickstart.md) builds from the checkout |
 | Application and optional MCP images | Build locally using the supplied tooling; GHCR is the selected future registry, with package namespaces pending |
 | Python delivery SDK | Install the wheel bundled with the running application or `python -m pip install ./sdk/python` from the application directory; no PyPI publication is claimed |
-| Documentation | Source Markdown and [local MkDocs preview](contributing/documentation.md); a live public documentation URL has not been assigned |
+| Documentation | [Public documentation](https://alexivanchyk.github.io/Voxriva/) and [local MkDocs preview](contributing/documentation.md) |
 
 Runtime installation needs no maintainer-hosted control plane, telemetry account
 or license-key activation. Cloud transports require your own provider accounts;
