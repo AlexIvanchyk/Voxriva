@@ -74,4 +74,4 @@ and redistribution boundaries.
 
 [Self-hosting](voxriva/docs/self-hosting.md) · [Contributing](CONTRIBUTING.md) ·
 [Support](SUPPORT.md) · [Security](SECURITY.md) · [Code of Conduct](CODE_OF_CONDUCT.md) ·
-[Changelog](CHANGELOG.md)
+[Changelog](CHANGELOG.md) · [CI and releases](.github/AUTOMATION.md)
