@@ -1,0 +1,60 @@
+# Applied only by scripts/example.py to the explicitly owned example project.
+x-example: &example
+  image: ${VOXRIVA_EXAMPLE_IMAGE:?example launcher required}
+  labels:
+    io.voxriva.example.owner: ${VOXRIVA_EXAMPLE_OWNER:?example launcher required}
+
+services:
+  api:
+    <<: *example
+    environment:
+      VOXRIVA_SMTP_ALLOWED_HOSTS: '["mailpit"]'
+      VOXRIVA_MFA_POLICY: optional
+  migrate:
+    <<: *example
+  secrets-init:
+    <<: *example
+  relay:
+    <<: *example
+  email-worker:
+    <<: *example
+    environment:
+      VOXRIVA_SMTP_ALLOWED_HOSTS: '["mailpit"]'
+  push-worker:
+    <<: *example
+    environment:
+      VOXRIVA_SMTP_ALLOWED_HOSTS: '["mailpit"]'
+  collector:
+    <<: *example
+    profiles: [monitoring]
+  postgres:
+    labels:
+      io.voxriva.example.owner: ${VOXRIVA_EXAMPLE_OWNER}
+  redis:
+    labels:
+      io.voxriva.example.owner: ${VOXRIVA_EXAMPLE_OWNER}
+  mailpit:
+    labels:
+      io.voxriva.example.owner: ${VOXRIVA_EXAMPLE_OWNER}
+
+volumes:
+  postgres:
+    labels:
+      io.voxriva.example.owner: ${VOXRIVA_EXAMPLE_OWNER}
+  redis:
+    labels:
+      io.voxriva.example.owner: ${VOXRIVA_EXAMPLE_OWNER}
+  provider-secrets:
+    labels:
+      io.voxriva.example.owner: ${VOXRIVA_EXAMPLE_OWNER}
+  monitoring:
+    labels:
+      io.voxriva.example.owner: ${VOXRIVA_EXAMPLE_OWNER}
+  mailpit:
+    labels:
+      io.voxriva.example.owner: ${VOXRIVA_EXAMPLE_OWNER}
+
+networks:
+  default:
+    labels:
+      io.voxriva.example.owner: ${VOXRIVA_EXAMPLE_OWNER}

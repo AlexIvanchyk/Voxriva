@@ -1,0 +1,175 @@
+name: voxriva-production
+
+x-application: &application
+  image: ${VOXRIVA_IMAGE:?Set VOXRIVA_IMAGE to a versioned release image}
+  restart: unless-stopped
+  init: true
+  stop_grace_period: 150s
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  read_only: true
+  tmpfs: [/tmp]
+  secrets: [database-url, provider-keyring, metrics-token]
+  environment: &application-env
+    VOXRIVA_CONTAINER_MONITORING_ENABLED: "false"
+    VOXRIVA_DATABASE_URL_FILE: /run/secrets/database-url
+    VOXRIVA_PROVIDER_ENCRYPTION_KEY_FILE: /run/secrets/provider-keyring
+    VOXRIVA_METRICS_TOKEN_FILE: /run/secrets/metrics-token
+    OPENSSL_armcap: "${VOXRIVA_OPENSSL_ARMCAP:-0}"
+    VOXRIVA_DELIVERY_MAX_ATTEMPTS: "${VOXRIVA_DELIVERY_MAX_ATTEMPTS:-3}"
+    VOXRIVA_DELIVERY_RETRY_BASE_SECONDS: "${VOXRIVA_DELIVERY_RETRY_BASE_SECONDS:-5}"
+    VOXRIVA_DELIVERY_RETRY_MAX_SECONDS: "${VOXRIVA_DELIVERY_RETRY_MAX_SECONDS:-60}"
+    VOXRIVA_DELIVERY_PAYLOAD_TTL_SECONDS: "${VOXRIVA_DELIVERY_PAYLOAD_TTL_SECONDS:-86400}"
+    VOXRIVA_DELIVERY_LEASE_SECONDS: "${VOXRIVA_DELIVERY_LEASE_SECONDS:-180}"
+    VOXRIVA_DELIVERY_PROVIDER_CONCURRENCY: "${VOXRIVA_DELIVERY_PROVIDER_CONCURRENCY:-2}"
+    VOXRIVA_DELIVERY_OUTBOX_RESEND_SECONDS: "${VOXRIVA_DELIVERY_OUTBOX_RESEND_SECONDS:-30}"
+    VOXRIVA_WORKER_STALE_SECONDS: "${VOXRIVA_WORKER_STALE_SECONDS:-30}"
+
+services:
+  api:
+    <<: *application
+    environment:
+      <<: *application-env
+      VOXRIVA_MFA_POLICY: "${VOXRIVA_MFA_POLICY:-optional}"
+      VOXRIVA_SECURE_SESSION_COOKIE: "true"
+      VOXRIVA_REDIS_URL: redis://redis:6379/0
+      VOXRIVA_SMTP_ALLOWED_HOSTS: "${VOXRIVA_SMTP_ALLOWED_HOSTS:-[]}"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      start_period: 120s
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  migrate:
+    <<: *application
+    restart: "no"
+    command: [alembic, upgrade, head]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: ${VOXRIVA_POSTGRES_IMAGE:-postgres:17.7-alpine@sha256:bb377b7239d2774ac8cc76f481596ce96c5a6b5e9d141f6d0a0ee371a6e7c0f2}
+    restart: unless-stopped
+    secrets: [postgres-password]
+    environment:
+      POSTGRES_USER: voxriva
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres-password
+      POSTGRES_DB: voxriva
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      start_period: 30s
+      test: [CMD-SHELL, "pg_isready -h 127.0.0.1 -U voxriva -d voxriva"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+
+  relay:
+    <<: *application
+    environment:
+      <<: *application-env
+      VOXRIVA_REDIS_URL: redis://redis:6379/0
+    command: [python, -m, backend.app.features.notifications.worker]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      start_period: 90s
+      test: [CMD, python, -c, "from pathlib import Path; import time; assert time.time()-float(Path('/tmp/voxriva-relay-heartbeat').read_text()) < 10"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  email-worker:
+    <<: *application
+    environment:
+      <<: *application-env
+      VOXRIVA_REDIS_URL: redis://redis:6379/0
+      VOXRIVA_SMTP_ALLOWED_HOSTS: "${VOXRIVA_SMTP_ALLOWED_HOSTS:-[]}"
+    command: [celery, -A, "backend.app.features.notifications.worker:celery_app", worker, --queues=email, --concurrency=2, "--hostname=email@%h", --loglevel=INFO]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      start_period: 120s
+      test: [CMD, python, -c, "import os, socket; from celery import Celery; app = Celery(broker=os.environ['VOXRIVA_REDIS_URL']); assert app.control.inspect(destination=['email@'+socket.gethostname()],timeout=2).ping()"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  push-worker:
+    <<: *application
+    environment:
+      <<: *application-env
+      VOXRIVA_REDIS_URL: redis://redis:6379/0
+      VOXRIVA_SMTP_ALLOWED_HOSTS: "${VOXRIVA_SMTP_ALLOWED_HOSTS:-[]}"
+    command: [celery, -A, "backend.app.features.notifications.worker:celery_app", worker, --queues=push, --concurrency=2, "--hostname=push@%h", --loglevel=INFO]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      start_period: 120s
+      test: [CMD, python, -c, "import os, socket; from celery import Celery; app = Celery(broker=os.environ['VOXRIVA_REDIS_URL']); assert app.control.inspect(destination=['push@'+socket.gethostname()],timeout=2).ping()"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: ${VOXRIVA_REDIS_IMAGE:-redis:7.4.7-alpine@sha256:02f2cc4882f8bf87c79a220ac958f58c700bdec0dfb9b9ea61b62fb0e8f1bfcf}
+    restart: unless-stopped
+    command: [redis-server, --appendonly, "yes"]
+    volumes:
+      - redis:/data
+    healthcheck:
+      start_period: 15s
+      test: [CMD, redis-cli, ping]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+
+  proxy:
+    image: ${VOXRIVA_PROXY_IMAGE:-caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d}
+    restart: unless-stopped
+    ports:
+      - "${VOXRIVA_HTTPS_BIND:-0.0.0.0}:${VOXRIVA_HTTPS_PORT:-443}:443"
+    environment:
+      VOXRIVA_HOST: ${VOXRIVA_HOST:?Set VOXRIVA_HOST to the HTTPS hostname}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    secrets: [tls-cert, tls-key]
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres:
+  redis:
+  caddy-data:
+  caddy-config:
+
+secrets:
+  postgres-password:
+    file: ${VOXRIVA_SECRETS_DIR:-./secrets}/postgres-password
+  database-url:
+    file: ${VOXRIVA_SECRETS_DIR:-./secrets}/database-url
+  provider-keyring:
+    file: ${VOXRIVA_SECRETS_DIR:-./secrets}/provider-keyring
+  metrics-token:
+    file: ${VOXRIVA_SECRETS_DIR:-./secrets}/metrics-token
+  tls-cert:
+    file: ${VOXRIVA_SECRETS_DIR:-./secrets}/tls.crt
+  tls-key:
+    file: ${VOXRIVA_SECRETS_DIR:-./secrets}/tls.key

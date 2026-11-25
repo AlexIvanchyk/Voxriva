@@ -1,0 +1,9 @@
+{
+  "template_key": "northstar-welcome",
+  "recipient": "person@example.test",
+  "locale": "en",
+  "context": {
+    "first_name": "Taylor",
+    "account_url": "https://northstar.example.test/account"
+  }
+}

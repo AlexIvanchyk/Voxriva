@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "x-voxriva-image": 1,
+  "properties": {
+    "media_type": {
+      "type": "string",
+      "enum": [
+        "image/png",
+        "image/jpeg",
+        "image/webp"
+      ]
+    },
+    "content_base64": {
+      "type": "string",
+      "maxLength": 349528
+    }
+  },
+  "required": [
+    "media_type",
+    "content_base64"
+  ],
+  "additionalProperties": false
+}

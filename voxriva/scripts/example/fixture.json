@@ -1,0 +1,13 @@
+{
+  "dataset": "northstar-first-email-v1",
+  "project": "Northstar Market",
+  "environment": "local",
+  "template_name": "Welcome to Northstar",
+  "template_key": "northstar-welcome",
+  "locale": "en",
+  "recipient": "sofia@example.test",
+  "context": {
+    "first_name": "Sofia",
+    "account_url": "https://northstar.example.test/account"
+  }
+}

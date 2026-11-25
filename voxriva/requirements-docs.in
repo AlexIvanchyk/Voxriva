@@ -1,0 +1,3 @@
+# Documentation toolchain only. Keep out of application/SDK runtime dependencies.
+mkdocs==1.6.1
+mkdocs-material==9.7.7

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Support and integration questions
+    url: https://github.com/AlexIvanchyk/Voxriva/blob/HEAD/SUPPORT.md
+    about: Read the support guide, then use an issue for your question.
+  - name: Security reporting
+    url: https://github.com/AlexIvanchyk/Voxriva/blob/HEAD/SECURITY.md
+    about: Follow the security policy before sharing vulnerability details.

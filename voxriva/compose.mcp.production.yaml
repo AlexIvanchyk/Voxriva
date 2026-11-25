@@ -1,0 +1,33 @@
+# Add to compose.production.yaml; set VOXRIVA_MCP_PUBLIC_URL to
+# https://<VOXRIVA_HOST>/mcp. The existing TLS secrets remain on the proxy only.
+services:
+  proxy:
+    volumes:
+      - ./deploy/Caddyfile.mcp:/etc/caddy/Caddyfile:ro
+    depends_on:
+      mcp:
+        condition: service_healthy
+  mcp:
+    image: ${VOXRIVA_MCP_IMAGE:?Set VOXRIVA_MCP_IMAGE to a locally built versioned MCP image}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, python, -c, "import http.client; c=http.client.HTTPConnection('127.0.0.1',8001,timeout=2); c.request('GET','/mcp'); assert c.getresponse().status == 401"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    secrets: [database-url]
+    environment:
+      VOXRIVA_DATABASE_URL_FILE: /run/secrets/database-url
+      VOXRIVA_MCP_PUBLIC_URL: ${VOXRIVA_MCP_PUBLIC_URL:?Set exact HTTPS endpoint ending in /mcp}
+      VOXRIVA_MFA_POLICY: "${VOXRIVA_MFA_POLICY:-optional}"
+      OPENSSL_armcap: "${VOXRIVA_OPENSSL_ARMCAP:-0}"
+    expose: ["8001"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully

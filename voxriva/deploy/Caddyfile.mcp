@@ -1,0 +1,14 @@
+{
+	auto_https disable_redirects
+	admin off
+}
+https://{$VOXRIVA_HOST} {
+	tls /run/secrets/tls-cert /run/secrets/tls-key
+	header Strict-Transport-Security "max-age=31536000"
+	handle /mcp {
+		reverse_proxy mcp:8001
+	}
+	handle {
+		reverse_proxy api:8000
+	}
+}

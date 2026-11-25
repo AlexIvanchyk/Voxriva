@@ -1,0 +1,28 @@
+# Local additive overlay: docker compose -f compose.yaml -f compose.mcp.yaml up -d --build mcp
+services:
+  mcp:
+    image: voxriva-mcp:local
+    build:
+      context: .
+      dockerfile: Dockerfile.mcp
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, python, -c, "import http.client; c=http.client.HTTPConnection('127.0.0.1',8001,timeout=2); c.request('GET','/mcp'); assert c.getresponse().status == 401"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    environment:
+      VOXRIVA_DATABASE_URL: postgresql+asyncpg://voxriva:voxriva@postgres:5432/voxriva
+      VOXRIVA_MCP_PUBLIC_URL: http://127.0.0.1:${VOXRIVA_MCP_PORT:-8001}/mcp
+      VOXRIVA_MFA_POLICY: "${VOXRIVA_MFA_POLICY:-optional}"
+      OPENSSL_armcap: "${VOXRIVA_OPENSSL_ARMCAP:-0}"
+    ports:
+      - "127.0.0.1:${VOXRIVA_MCP_PORT:-8001}:8001"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully

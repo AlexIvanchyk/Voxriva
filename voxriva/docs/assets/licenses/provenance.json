@@ -1,0 +1,177 @@
+{
+  "scope": "Static English documentation assets; not application/container redistribution clearance.",
+  "theme": "mkdocs-material 9.7.7",
+  "upstream_lockfile": "https://raw.githubusercontent.com/squidfunk/mkdocs-material/9.7.7/package-lock.json",
+  "files": [
+    {
+      "file": "clipboard-2.0.11-LICENSE.txt",
+      "source": {
+        "npm_archive": "https://registry.npmjs.org/clipboard/-/clipboard-2.0.11.tgz",
+        "archive_integrity": "sha512-C+0bbOqkezLIsmWSvlsXS0Q0bmkugu7jcfMIACB+RDEntIzQIkdr148we28AfSloQLRdZlYL/QYyrq05j/3Faw==",
+        "member": "package/LICENSE"
+      },
+      "sha256": "a798e7b5fa604117d52d607e05f1cbac3b2fa5da087837f412a1a3c866b4b748"
+    },
+    {
+      "file": "escape-html-1.0.3-LICENSE.txt",
+      "source": {
+        "npm_archive": "https://registry.npmjs.org/escape-html/-/escape-html-1.0.3.tgz",
+        "archive_integrity": "sha1-Aljq5NPQwJdN4cFpGI7wBR0dGYg=",
+        "member": "package/LICENSE"
+      },
+      "sha256": "255aa557a1f55224ce522f311629c0bf20854740a67955cefd798fbd1d3d1ded"
+    },
+    {
+      "file": "focus-visible-5.2.1-LICENSE.txt",
+      "source": {
+        "npm_archive": "https://registry.npmjs.org/focus-visible/-/focus-visible-5.2.1.tgz",
+        "archive_integrity": "sha512-8Bx950VD1bWTQJEH/AM6SpEk+SU55aVnp4Ujhuuxy3eMEBCRwBnTBnVXr9YAPvZL3/CNjCa8u4IWfNmEO53whA==",
+        "member": "package/LICENSE.md"
+      },
+      "sha256": "7aeb3acf108717fd0f68ada2eebeaaec46dcdd239b4c5e7b4b8e6ea8861acfdd"
+    },
+    {
+      "file": "lunr-2.3.9-LICENSE.txt",
+      "source": {
+        "npm_archive": "https://registry.npmjs.org/lunr/-/lunr-2.3.9.tgz",
+        "archive_integrity": "sha512-zTU3DaZaF3Rt9rhN3uBMGQD3dD2/vFQqnvZCDv4dl5iOzq2IZQqTxu90r4E5J+nP70J3ilqVCrbho2eWaeW8Ow==",
+        "member": "package/LICENSE"
+      },
+      "sha256": "ae33f5a0d538cd93de1136a052ffa734b59d6b28e7cfc19e03de1d8b5d9f40ea"
+    },
+    {
+      "file": "material-design-color-2.3.2-LICENSE.txt",
+      "source": {
+        "npm_archive": "https://registry.npmjs.org/material-design-color/-/material-design-color-2.3.2.tgz",
+        "archive_integrity": "sha1-6K+VjYUqh0e/shHkjOEoK9qRiBU=",
+        "member": "package/LICENSE"
+      },
+      "sha256": "9363d160bf41d46d83901a5d24fc3fe2094c2afc17b4a2378914b273977ee2de"
+    },
+    {
+      "file": "rxjs-7.8.2-LICENSE.txt",
+      "source": {
+        "npm_archive": "https://registry.npmjs.org/rxjs/-/rxjs-7.8.2.tgz",
+        "archive_integrity": "sha512-dhKf903U/PQZY6boNNtAGdWbG85WAbjT/1xYoZIC7FAY0yWapOBQVsVrDl58W86//e1VpMNBtRV4MaXfdMySFA==",
+        "member": "package/LICENSE.txt"
+      },
+      "sha256": "81c407ac717813b0e3795402960e04003c7bba8ba59b621624707028531c9ade"
+    },
+    {
+      "file": "tslib-2.7.0-LICENSE.txt",
+      "source": {
+        "npm_archive": "https://registry.npmjs.org/tslib/-/tslib-2.7.0.tgz",
+        "archive_integrity": "sha512-gLXCKdN1/j47AiHiOkJN69hJmcbGTHI0ImLmbYLHykhgeN0jVGola9yVjFgzCUklsZQMW55o+dW7IXv3RCXDzA==",
+        "member": "package/LICENSE.txt"
+      },
+      "sha256": "210b19e543130388c68654b7497e967119ce17145f66ab7d85688fbd70f08751"
+    },
+    {
+      "file": "tiny-emitter-2.1.0-LICENSE.txt",
+      "source": {
+        "npm_archive": "https://registry.npmjs.org/tiny-emitter/-/tiny-emitter-2.1.0.tgz",
+        "archive_integrity": "sha512-NB6Dk1A9xgQPMoGqC5CVXn123gWyte215ONT5Pp5a0yt4nlEoO1ZWeCwpncaekPHXO60i47ihFnZPiRPjRMq4Q==",
+        "member": "package/LICENSE"
+      },
+      "sha256": "aada4c7da6a5be46beadf9d4f40d7dba9e222e57180d46289b2bb9112e65daae"
+    },
+    {
+      "file": "good-listener-1.2.2-NOTICE.txt",
+      "source": {
+        "npm_archive": "https://registry.npmjs.org/good-listener/-/good-listener-1.2.2.tgz",
+        "archive_integrity": "sha1-1TswzfkxPf+33JoNR3CWqm0UXFA=",
+        "member": "package/readme.md",
+        "section": "License"
+      },
+      "sha256": "44f868a29e4b276f602350ae486a60a9636a47df30efda76e0f86524943cf510"
+    },
+    {
+      "file": "select-1.1.2-NOTICE.txt",
+      "source": {
+        "npm_archive": "https://registry.npmjs.org/select/-/select-1.1.2.tgz",
+        "archive_integrity": "sha1-DnNQrN7ICxEIUoeG7B1EGNEbOW0=",
+        "member": "package/readme.md",
+        "section": "License"
+      },
+      "sha256": "b13b75878b77b2d37af5af746828b781c96c754d2be00ea43679d0f3bd6be009"
+    },
+    {
+      "file": "delegate-3.2.0-NOTICE.txt",
+      "source": {
+        "npm_archive": "https://registry.npmjs.org/delegate/-/delegate-3.2.0.tgz",
+        "archive_integrity": "sha512-IofjkYBZaZivn0V8nnsMJGBr4jVLxHDheKSW88PyxS5QC4Vo9ZbZVvhzlSxY87fVq3STR6r+4cGepyHkcWOQSw==",
+        "member": "package/readme.md",
+        "section": "License"
+      },
+      "sha256": "fc551a26bd3020cd3840366deb8bc4f749c460209d9183b79b98cb1c0c2761a2"
+    },
+    {
+      "file": "mkdocs-material-9.7.7-LICENSE.txt",
+      "source": {
+        "installed_distribution": "mkdocs-material 9.7.7",
+        "member": "mkdocs_material-9.7.7.dist-info/licenses/LICENSE"
+      },
+      "sha256": "e1150f26b4c0f872627b39fda49ae3bd850304f2f7f3171ae0531c1f8f4dd078"
+    },
+    {
+      "file": "material-icons-LICENSE.txt",
+      "source": {
+        "installed_distribution": "mkdocs-material 9.7.7",
+        "member": "material/templates/.icons/material/LICENSE"
+      },
+      "sha256": "3bae6305bcaa6d10219b999f65c342034c2d40b1c0e8567fa08605e73ccba829"
+    },
+    {
+      "file": "fontawesome-LICENSE.txt",
+      "source": {
+        "installed_distribution": "mkdocs-material 9.7.7",
+        "member": "material/templates/.icons/fontawesome/LICENSE.txt"
+      },
+      "sha256": "329f24fdba0c57714d7d202d30a74767feac6907685ee24f0abbf1bd47581a07"
+    },
+    {
+      "file": "W3C-2015-LICENSE.txt",
+      "source": {
+        "url": "https://www.w3.org/Consortium/Legal/2015/copyright-software-and-document",
+        "format": "main license text; HTML navigation removed and whitespace normalized"
+      },
+      "sha256": "4ebec65c1ca2b5f1572595d96912bb40812ddc2bfd8e357bdc2af1ab93d83153"
+    }
+  ],
+  "source_map_checks": [
+    {
+      "asset": "assets/javascripts/bundle.d7400e89.min.js.map",
+      "comparisons": {
+        "focus-visible": {
+          "matching": 1,
+          "different": 0
+        },
+        "escape-html": {
+          "matching": 1,
+          "different": 0
+        },
+        "clipboard": {
+          "matching": 1,
+          "different": 0
+        },
+        "tslib": {
+          "matching": 1,
+          "different": 0
+        },
+        "rxjs": {
+          "matching": 124,
+          "different": 0
+        }
+      }
+    },
+    {
+      "asset": "assets/javascripts/workers/search.2c215733.min.js.map",
+      "comparisons": {
+        "lunr": {
+          "matching": 1,
+          "different": 0
+        }
+      }
+    }
+  ]
+}

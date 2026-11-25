@@ -1,0 +1,26 @@
+.lifecycle-toolbar, .deployment-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 18px; margin: 22px 0; }
+.lifecycle-toolbar > div:first-child { display: grid; gap: 7px; }
+.field-caption, .lifecycle-help { font-size: 12px; color: var(--muted); }
+.lifecycle-help { margin-block: 12px 22px; line-height: 1.6; }
+.lifecycle-tabs > .ant-tabs-nav { margin-bottom: 24px; }
+.lifecycle-tabs > .ant-tabs-nav .ant-tabs-tab { padding-block: 16px; }
+.version-identity { display: grid; gap: 6px; }
+.version-identity > span { color: var(--muted); font-size: 12px; }
+.version-diff { margin-top: 32px; padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.comparison-selectors { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.comparison-selectors > label { display: grid; gap: 8px; color: var(--muted); font-size: 12px; }
+.deployment-heading { align-items: start; }
+.deployment-heading p { max-width: 570px; color: var(--muted); line-height: 1.65; font-size: 13px; }
+.deployment-activity { display: grid; gap: 14px; max-height: 55dvh; overflow-y: auto; }
+.deployment-activity > div { padding: 15px; border: 1px solid var(--line); border-radius: 10px; }
+.deployment-activity p { margin: 8px 0; }
+.deployment-activity small { color: var(--muted); }
+.action-target { display: grid; gap: 8px; padding: 16px; border: 1px solid #dfe4f2; border-radius: 10px; background: #f6f7fc; margin-bottom: 24px; }
+.action-target > span { color: var(--muted); font-size: 13px; }
+.published-preview-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 24px; }
+.published-preview-grid label { display: grid; gap: 10px; }
+.published-preview-grid iframe { width: 100%; height: 330px; border: 1px solid var(--line); }
+.published-preview-grid pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #f6f7fa; padding: 14px; border-radius: 8px; }
+.published-preview-grid details { margin-top: 16px; }
+@media (max-width: 760px) { .published-preview-grid, .comparison-selectors { grid-template-columns: 1fr; } }
+

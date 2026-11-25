@@ -1,0 +1,22 @@
+# Local demo overlay. Explicit project selection is required; no public SMTP.
+services:
+  api:
+    image: voxriva:demo
+    environment:
+      VOXRIVA_SMTP_ALLOWED_HOSTS: '["mailpit"]'
+  migrate:
+    image: voxriva:demo
+  secrets-init:
+    image: voxriva:demo
+  collector:
+    image: voxriva:demo
+  relay:
+    image: voxriva:demo
+  email-worker:
+    image: voxriva:demo
+    environment:
+      VOXRIVA_SMTP_ALLOWED_HOSTS: '["mailpit"]'
+  push-worker:
+    image: voxriva:demo
+    environment:
+      VOXRIVA_SMTP_ALLOWED_HOSTS: '["mailpit"]'

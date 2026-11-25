@@ -1,0 +1,282 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+    working-directory: voxriva
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: '1'
+  DOCKER_DEFAULT_PLATFORM: linux/amd64
+
+jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      runtime: ${{ steps.scope.outputs.runtime }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Detect documentation-only changes; missing history requires full checks
+        id: scope
+        working-directory: .
+        run: python .github/scripts/changed_paths.py
+
+  docs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: voxriva/requirements-docs.lock
+      - name: Install the isolated documentation toolchain
+        run: |
+          python -m venv "$RUNNER_TEMP/docs-venv"
+          "$RUNNER_TEMP/docs-venv/bin/python" -m pip install -r requirements-docs.lock
+      - name: Strict Material for MkDocs build
+        run: '"$RUNNER_TEMP/docs-venv/bin/python" -m mkdocs build --strict --clean --config-file mkdocs.yml --site-dir "$RUNNER_TEMP/docs-site"'
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: docs-preview-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/docs-site/
+          if-no-files-found: error
+          retention-days: 7
+
+  workflow-policy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Validate workflow schema, shell helpers and release evidence tests
+        working-directory: .
+        run: bash .github/scripts/lint-workflows.sh
+
+  backend:
+    needs: changes
+    if: needs.changes.outputs.runtime == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: voxriva_ci
+          POSTGRES_PASSWORD: synthetic-ci-only
+          POSTGRES_DB: voxriva_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd 'pg_isready -U voxriva_ci -d voxriva_ci'
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql+asyncpg://voxriva_ci:synthetic-ci-only@127.0.0.1:5432/voxriva_ci
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: |
+            voxriva/pyproject.toml
+            voxriva/requirements-*.lock
+            voxriva/sdk/python/pyproject.toml
+      - name: Install the locked application and test tools
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install -r requirements-runtime.lock -r requirements-mcp.lock -e '.[dev]' -e sdk/python
+          .venv/bin/python -m pip check
+      - name: Architecture, generated format registry, frozen delivery contract and SDK
+        run: make test-architecture test-contract test-sdk
+      - name: Backend lint and strict types
+        run: |
+          .venv/bin/python -m ruff check .
+          .venv/bin/python -m mypy backend migrations
+      - name: Backend tests including real PostgreSQL transaction and image persistence checks
+        run: |
+          mkdir -p .ci
+          .venv/bin/python -m pytest --cov=backend.app --cov-report=term-missing --junitxml=.ci/backend.xml
+          python ../.github/scripts/release_metadata.py source --junit .ci/backend.xml --output .ci/source-checks.json
+      - name: Retain successful source evidence without test logs or credentials
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: source-checks-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: voxriva/.ci/source-checks.json
+          include-hidden-files: true # Exactly this allowlisted file, no directory glob.
+          if-no-files-found: error
+          retention-days: 14
+
+  frontend-security:
+    needs: changes
+    if: needs.changes.outputs.runtime == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: voxriva/requirements-*.lock
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: voxriva/frontend/package-lock.json
+      - name: Frontend lint, unit tests and TypeScript production build
+        run: |
+          npm --prefix frontend ci --no-audit --no-fund
+          make test-frontend
+      - name: Required JavaScript and locked Python application dependency audits
+        run: |
+          npm --prefix frontend audit --audit-level=high
+          python -m venv .audit-venv
+          .audit-venv/bin/python -m pip install pip-audit==2.10.1
+          .audit-venv/bin/python -m pip_audit --disable-pip --no-deps -r requirements-runtime.lock -r requirements-mcp.lock
+      - name: Compose schema validation
+        run: |
+          make test-config
+          VOXRIVA_IMAGE=voxriva:ci VOXRIVA_HOST=localhost docker compose -f compose.production.yaml config --quiet
+          docker compose -f compose.mcp.smoke.yaml config --quiet
+          docker compose -f compose.mcp-keys-test.yaml config --quiet
+
+  trivy:
+    needs: changes
+    if: needs.changes.outputs.runtime == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Required Trivy library scan of locked source dependencies
+        working-directory: .
+        run: |
+          scanner=aquasec/trivy:0.69.3@sha256:bcc376de8d77cfe086a917230e818dc9f8528e3c852f7b1aff648949b6258d1c
+          docker run --rm --read-only --tmpfs /tmp:rw,nosuid,nodev \
+            -v "$GITHUB_WORKSPACE:/source:ro" "$scanner" fs \
+            --cache-dir /tmp/trivy-cache --scanners vuln --pkg-types library \
+            --file-patterns 'pip:requirements-(runtime|mcp|docs)\.lock$' \
+            --include-dev-deps --severity HIGH,CRITICAL --exit-code 1 /source
+
+  e2e:
+    needs: [workflow-policy, backend, frontend-security]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        suite: [chromium, cloud, crash, sdk, mcp, mcp-keys]
+    env:
+      # Runners and Docker daemons are job-local; scripts also use unique project
+      # names. Each suite is serial because it can restart its own workers.
+      VOXRIVA_TEST_PORT: '18080'
+      VOXRIVA_TEST_MAILPIT_PORT: '18025'
+      VOXRIVA_MCP_KEYS_PORT: '18183'
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: voxriva/sdk/python/pyproject.toml
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: matrix.suite != 'mcp'
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: voxriva/frontend/package-lock.json
+      - name: Prepare the SDK helper and pinned Chromium
+        if: matrix.suite != 'mcp'
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install setuptools==80.9.0 ./sdk/python
+          npm --prefix frontend ci --no-audit --no-fund
+          cd frontend
+          npx --no-install playwright install --with-deps chromium
+      - name: Configure isolated test artifact paths
+        env:
+          SUITE: ${{ matrix.suite }}
+        run: printf 'CI_ARTIFACT_DIR=%s/e2e-%s-%s-%s\n' "$RUNNER_TEMP" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$SUITE" >> "$GITHUB_ENV"
+      - name: Run the saved isolated scenario
+        env:
+          SUITE: ${{ matrix.suite }}
+        run: bash ../.github/scripts/e2e.sh "$SUITE"
+      - name: Retain sanitized outcome only
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: e2e-${{ matrix.suite }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.CI_ARTIFACT_DIR }}/${{ matrix.suite }}/summary.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  ci-ready:
+    if: always()
+    needs: [changes, docs, workflow-policy, backend, frontend-security, trivy, e2e]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every check, including all isolated E2E suites
+        env:
+          WORKFLOW_RESULT: ${{ needs.workflow-policy.result }}
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend-security.result }}
+          TRIVY_RESULT: ${{ needs.trivy.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          DOCS_RESULT: ${{ needs.docs.result }}
+          RUNTIME_REQUIRED: ${{ needs.changes.outputs.runtime }}
+        run: |
+          test "$CHANGES_RESULT" = success
+          test "$DOCS_RESULT" = success
+          test "$WORKFLOW_RESULT" = success
+          if test "$RUNTIME_REQUIRED" = true; then
+            test "$BACKEND_RESULT" = success
+            test "$FRONTEND_RESULT" = success
+            test "$TRIVY_RESULT" = success
+            test "$E2E_RESULT" = success
+          else
+            test "$RUNTIME_REQUIRED" = false
+            test "$BACKEND_RESULT" = skipped
+            test "$FRONTEND_RESULT" = skipped
+            test "$TRIVY_RESULT" = skipped
+            test "$E2E_RESULT" = skipped
+          fi
+        working-directory: .

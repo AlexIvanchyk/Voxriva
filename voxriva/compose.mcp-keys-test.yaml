@@ -1,0 +1,41 @@
+# Dedicated dashboard-key test stack. No workers, providers or persistent volumes.
+x-environment: &environment
+  VOXRIVA_DATABASE_URL: postgresql+asyncpg://voxriva:synthetic-only@postgres:5432/voxriva
+  OPENSSL_armcap: "0"
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: voxriva
+      POSTGRES_PASSWORD: synthetic-only
+      POSTGRES_DB: voxriva
+    tmpfs: [/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U voxriva -d voxriva"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  migrate:
+    image: ${VOXRIVA_MCP_KEYS_IMAGE:-voxriva-mcp:keys-browser}
+    environment: *environment
+    command: [alembic, upgrade, head]
+    depends_on:
+      postgres:
+        condition: service_healthy
+  api:
+    image: ${VOXRIVA_MCP_KEYS_IMAGE:-voxriva-mcp:keys-browser}
+    environment:
+      <<: *environment
+      VOXRIVA_SECURE_SESSION_COOKIE: "false"
+      VOXRIVA_CONTAINER_MONITORING_ENABLED: "false"
+    command: [uvicorn, "backend.app.main:app", --host, "0.0.0.0", --port, "8000"]
+    ports: ["127.0.0.1:${VOXRIVA_MCP_KEYS_PORT:-18183}:8000"]
+    volumes: ["./frontend/dist:/app/frontend/dist:ro"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live')"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

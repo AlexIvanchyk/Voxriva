@@ -1,0 +1,22 @@
+# Local workspace files; application-specific rules live in voxriva/.gitignore.
+.idea/
+.vscode/
+.DS_Store
+.ruff_cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+.aws/
+.env
+.env.*
+*.env
+!.env.example
+!.env.*.example
+!*.env.example
+!*.env.*.example
+
+# Generated previews and screenshots are retained locally as evidence.
+/output/

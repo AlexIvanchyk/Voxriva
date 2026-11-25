@@ -1,0 +1,45 @@
+name: Bug report
+description: Report a reproducible problem with fictional, sanitized data.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For suspected vulnerabilities, follow the [security policy](https://github.com/AlexIvanchyk/Voxriva/blob/HEAD/SECURITY.md) before sharing details.
+        Remove secrets, real recipients, device tokens and runtime message data.
+  - type: input
+    id: version
+    attributes:
+      label: Version or source revision
+      description: Include SDK and image versions when relevant.
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation mode
+      options:
+        - Isolated local example
+        - Persistent local Compose
+        - Production Compose
+        - Native development
+        - SDK or MCP client
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Use a minimal fictional template/payload and include relevant configuration.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and sanitized diagnostics
+      description: OS/CPU, Python, Docker/Compose or browser versions; error codes and relevant redacted logs.

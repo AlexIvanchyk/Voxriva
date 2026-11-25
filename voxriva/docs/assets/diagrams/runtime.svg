@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 660" role="img" aria-labelledby="title desc">
+  <title id="title">Voxriva runtime services and dependencies</title>
+  <desc id="desc">HTTP callers reach the API through loopback or production Caddy HTTPS. API, optional MCP, migration, relay and workers share PostgreSQL. API commits notifications and outbox. Relay reads the outbox and publishes notification IDs to Redis. Email and push workers consume separate Redis queues and use PostgreSQL for pinned data, claims and outcomes. Workers call external SMTP or SES and FCM. Local Mailpit is a demo-only SMTP destination.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto-start-reverse"><path d="M0 0L8 4L0 8Z" fill="#66758e"/></marker>
+    <marker id="demoArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#b37d24"/></marker>
+    <style>
+      text{font-family:system-ui,-apple-system,Segoe UI,sans-serif;fill:#17223b} .label{font-size:20px;font-weight:650}.small{font-size:15px;fill:#526078}.edge{font-size:14px;fill:#526078}.own{fill:#f0f0ff;stroke:#8179d9;stroke-width:1.5}.dep{fill:#f3f5f8;stroke:#9ba8bb;stroke-width:1.5}.provider{fill:#f1f8f5;stroke:#74a48e;stroke-width:1.5}.demo{fill:#fff9ed;stroke:#c99c4c;stroke-width:1.5;stroke-dasharray:6 4}.line{fill:none;stroke:#66758e;stroke-width:1.7;marker-end:url(#arrow)}.both{marker-start:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1180" height="660" fill="#fff" rx="12"/>
+  <rect class="dep" x="35" y="25" width="290" height="70" rx="9"/>
+  <text class="label" x="55" y="53">HTTP callers</text><text class="small" x="55" y="78">Loopback / Caddy HTTPS in production</text>
+  <rect class="own" x="35" y="145" width="290" height="100" rx="9"/>
+  <text class="label" x="55" y="177">API + dashboard</text><text class="small" x="55" y="202">Auth · resolve · validate · accept</text><text class="small" x="55" y="225">FastAPI / static frontend</text>
+  <path class="line" d="M180 95V145"/>
+  <rect class="dep" x="445" y="145" width="285" height="100" rx="9"/>
+  <text class="label" x="465" y="177">PostgreSQL</text><text class="small" x="465" y="202">Sessions · versions · credentials</text><text class="small" x="465" y="225">Notifications · outbox · claims</text>
+  <path class="line" d="M325 190H445"/><text class="edge" x="336" y="179">atomic accept</text>
+  <rect class="own" x="875" y="25" width="270" height="75" rx="9" stroke-dasharray="6 4"/>
+  <text class="label" x="895" y="56">MCP (optional)</text><text class="small" x="895" y="80">Scoped template authoring only</text>
+  <path class="line" d="M875 63H585V145"/>
+  <rect class="own" x="875" y="145" width="270" height="70" rx="9"/>
+  <text class="label" x="895" y="174">migrate (one-shot)</text><text class="small" x="895" y="198">Alembic before application rollout</text>
+  <path class="line" d="M875 180H730"/>
+  <rect class="own" x="35" y="345" width="290" height="95" rx="9"/>
+  <text class="label" x="55" y="377">Outbox relay</text><text class="small" x="55" y="402">Dispatch · reconcile · expire input</text><text class="small" x="55" y="424">Long-running process</text>
+  <path class="line" d="M325 370H375V225H445"/><text class="edge" x="335" y="289">outbox</text>
+  <rect class="dep" x="445" y="345" width="285" height="95" rx="9"/>
+  <text class="label" x="465" y="378">Redis</text><text class="small" x="465" y="404">ID-only Celery tasks</text><text class="small" x="465" y="425">email / push queues</text>
+  <path class="line" d="M325 408H445"/><text class="edge" x="338" y="397">publish IDs</text>
+  <rect class="own" x="875" y="315" width="270" height="145" rx="9"/>
+  <text class="label" x="895" y="347">email-worker</text><text class="small" x="895" y="372">Consumes email queue</text>
+  <path d="M893 385H1125" stroke="#c4c0eb"/>
+  <text class="label" x="895" y="413">push-worker</text><text class="small" x="895" y="440">Consumes push queue</text>
+  <path class="line" d="M730 402H875"/><text class="edge" x="749" y="391">consume IDs</text>
+  <path class="line both" d="M730 225H790V335H875"/><text class="edge" x="800" y="270">pinned data</text><text class="edge" x="800" y="290">claims / results</text>
+  <rect class="provider" x="875" y="530" width="270" height="95" rx="9"/>
+  <text class="label" x="895" y="562">External providers</text><text class="small" x="895" y="588">Email: SMTP / Amazon SES</text><text class="small" x="895" y="611">Push: Firebase Cloud Messaging</text>
+  <path class="line" d="M1040 460V530"/>
+  <rect class="demo" x="445" y="530" width="285" height="95" rx="9"/>
+  <text class="label" x="465" y="562">Mailpit</text><text class="small" x="465" y="587">Local demo SMTP destination only</text><text class="small" x="465" y="610">Not a production dependency</text>
+  <path d="M925 460V490H790V575H730" fill="none" stroke="#b37d24" stroke-width="1.7" stroke-dasharray="6 4" marker-end="url(#demoArrow)"/><text class="edge" x="800" y="519">local SMTP</text>
+  <rect class="own" x="35" y="535" width="18" height="15" rx="3"/><text class="small" x="62" y="549">Voxriva process / container role</text>
+  <rect class="dep" x="35" y="565" width="18" height="15" rx="3"/><text class="small" x="62" y="579">Shared infrastructure dependency</text>
+  <rect class="demo" x="35" y="595" width="18" height="15" rx="3"/><text class="small" x="62" y="609">Local-demo-only service</text>
+</svg>

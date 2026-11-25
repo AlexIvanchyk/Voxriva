@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "voxriva-example-provider"
+version = "0.1.0"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+
+[project.entry-points."notification_platform.providers"]
+example_smtp = "example_provider:ExampleSMTPProvider"
+
+[tool.setuptools.packages.find]
+include = ["example_provider*"]
