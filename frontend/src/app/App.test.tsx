@@ -218,7 +218,7 @@ it("issues a key in the selected environment and shows the secret only once", as
   fireEvent.click(within(secret).getByRole("button", { name: "Done" }));
   expect(screen.queryByText(key)).not.toBeInTheDocument();
   expect(await screen.findByText(prodKey.name)).toBeInTheDocument();
-});
+}, 20_000); // Full-App modal interaction needs headroom on the two-core CI runner.
 
 
 it("opens independent workspace sections without a global project selector", async () => {
