@@ -11,7 +11,7 @@ data and provider credentials in your infrastructure.
 
 [Run locally](docs/quickstart.md) · [Dashboard](docs/dashboard.md) ·
 [API & SDK](docs/journeys/integrate.md) · [MCP](docs/journeys/mcp.md) ·
-[Documentation](docs/index.md)
+[Documentation](https://alexivanchyk.github.io/Voxriva/)
 
 - **Content releases without application releases:** preview, languages,
   immutable versions, explicit environment deployments and rollback.
