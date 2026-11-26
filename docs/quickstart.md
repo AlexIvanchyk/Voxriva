@@ -35,6 +35,9 @@ creates a Delivery key and verifies one sample through the API, relay and worker
 It prints an App URL, an Email URL and the location of your private login file.
 Use those actual URLs; ports are selected automatically.
 
+To evaluate the layouts introduced in the 0.2.0 source prerelease, follow the
+[Northstar layout walkthrough](evaluate.md#inspect-northstar-email-layouts).
+
 ## Open the dashboard and inbox
 
 Sign in at the printed App URL using `output/example/local/access.txt`. Open

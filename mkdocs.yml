@@ -80,6 +80,7 @@ nav:
       - Meet Voxriva: index.md
       - Product capabilities: capabilities.md
       - Release status and compatibility: release-status.md
+      - 0.2.0 source prerelease: releases/0.2.0.md
       - 0.1.1 container and SDK prerelease: releases/0.1.1.md
       - 0.1.0 source prerelease: releases/0.1.0.md
   - Run locally:

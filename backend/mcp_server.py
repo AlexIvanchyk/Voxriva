@@ -100,7 +100,7 @@ class BearerGate:
 def create_server(authoring: Authoring, stdio_token: str = "") -> MCPServer:
     server = RedactedServer(
         "Voxriva template authoring",
-        version="0.1.1",
+        version="0.2.0",
         log_level="ERROR",
         instructions=(
             "Work with synthetic template data only. Read exact branch IDs and revisions first. "
