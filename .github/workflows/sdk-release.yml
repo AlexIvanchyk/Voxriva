@@ -15,7 +15,7 @@ on:
         type: choice
         options: [candidate, testpypi, pypi]
       candidate_run_id:
-        description: Reuse exact artifacts from a successful SDK run at this same commit
+        description: Reuse exact artifacts from a successful run with an identical complete SDK tree
         required: false
         default: ''
         type: string
@@ -44,6 +44,7 @@ jobs:
       artifact: ${{ steps.plan.outputs.artifact }}
       source_run: ${{ steps.plan.outputs.source_run }}
       source_attempt: ${{ steps.plan.outputs.source_attempt }}
+      source_revision: ${{ steps.plan.outputs.source_revision }}
       workflow_id: ${{ steps.plan.outputs.workflow_id }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -72,11 +73,12 @@ jobs:
         env:
           SOURCE_RUN: ${{ steps.plan.outputs.source_run }}
           SOURCE_ATTEMPT: ${{ steps.plan.outputs.source_attempt }}
+          SOURCE_REVISION: ${{ steps.plan.outputs.source_revision }}
           WORKFLOW_ID: ${{ steps.plan.outputs.workflow_id }}
         run: >-
           python .github/scripts/sdk_release.py seal --bundle "$RUNNER_TEMP/sdk-candidate"
           --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT"
-          --workflow-id "$WORKFLOW_ID"
+          --workflow-id "$WORKFLOW_ID" --source-revision "$SOURCE_REVISION"
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         if: inputs.candidate_run_id != ''
         with:
@@ -89,11 +91,12 @@ jobs:
         env:
           SOURCE_RUN: ${{ steps.plan.outputs.source_run }}
           SOURCE_ATTEMPT: ${{ steps.plan.outputs.source_attempt }}
+          SOURCE_REVISION: ${{ steps.plan.outputs.source_revision }}
           WORKFLOW_ID: ${{ steps.plan.outputs.workflow_id }}
         run: >-
           python .github/scripts/sdk_release.py verify --bundle "$RUNNER_TEMP/sdk-candidate"
           --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT"
-          --workflow-id "$WORKFLOW_ID"
+          --workflow-id "$WORKFLOW_ID" --source-revision "$SOURCE_REVISION"
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: inputs.candidate_run_id == ''
         with:
@@ -128,11 +131,12 @@ jobs:
         env:
           SOURCE_RUN: ${{ needs.prepare.outputs.source_run }}
           SOURCE_ATTEMPT: ${{ needs.prepare.outputs.source_attempt }}
+          SOURCE_REVISION: ${{ needs.prepare.outputs.source_revision }}
           WORKFLOW_ID: ${{ needs.prepare.outputs.workflow_id }}
         run: >-
           python .github/scripts/sdk_release.py verify --bundle "$RUNNER_TEMP/sdk-candidate"
           --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT"
-          --workflow-id "$WORKFLOW_ID"
+          --workflow-id "$WORKFLOW_ID" --source-revision "$SOURCE_REVISION"
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ matrix.python }}
@@ -175,9 +179,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SOURCE_RUN: ${{ needs.prepare.outputs.source_run }}
           SOURCE_ATTEMPT: ${{ needs.prepare.outputs.source_attempt }}
+          SOURCE_REVISION: ${{ needs.prepare.outputs.source_revision }}
           WORKFLOW_ID: ${{ needs.prepare.outputs.workflow_id }}
         run: |
-          python .github/scripts/sdk_release.py verify --bundle "$GITHUB_WORKSPACE/sdk-candidate" --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT" --workflow-id "$WORKFLOW_ID"
+          python .github/scripts/sdk_release.py verify --bundle "$GITHUB_WORKSPACE/sdk-candidate" --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT" --workflow-id "$WORKFLOW_ID" --source-revision "$SOURCE_REVISION"
           python .github/scripts/sdk_release.py index --bundle "$GITHUB_WORKSPACE/sdk-candidate" --version "$VERSION" --index testpypi --mode prepare-test
       - name: Publish the reviewed bytes with TestPyPI Trusted Publishing
         if: steps.index.outputs.upload == 'true'
@@ -210,9 +215,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SOURCE_RUN: ${{ needs.prepare.outputs.source_run }}
           SOURCE_ATTEMPT: ${{ needs.prepare.outputs.source_attempt }}
+          SOURCE_REVISION: ${{ needs.prepare.outputs.source_revision }}
           WORKFLOW_ID: ${{ needs.prepare.outputs.workflow_id }}
         run: |
-          python .github/scripts/sdk_release.py verify --bundle "$RUNNER_TEMP/sdk-candidate" --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT" --workflow-id "$WORKFLOW_ID"
+          python .github/scripts/sdk_release.py verify --bundle "$RUNNER_TEMP/sdk-candidate" --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT" --workflow-id "$WORKFLOW_ID" --source-revision "$SOURCE_REVISION"
           python .github/scripts/sdk_release.py index --bundle "$RUNNER_TEMP/sdk-candidate" --version "$VERSION" --index testpypi --mode match
           python -m pip download --no-cache-dir --no-deps --only-binary=:all: --index-url https://test.pypi.org/simple --dest "$RUNNER_TEMP/index-wheel" "voxriva-sdk==$VERSION"
           python .github/scripts/sdk_release.py downloaded --bundle "$RUNNER_TEMP/sdk-candidate" --version "$VERSION" --directory "$RUNNER_TEMP/index-wheel"
@@ -248,9 +254,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SOURCE_RUN: ${{ needs.prepare.outputs.source_run }}
           SOURCE_ATTEMPT: ${{ needs.prepare.outputs.source_attempt }}
+          SOURCE_REVISION: ${{ needs.prepare.outputs.source_revision }}
           WORKFLOW_ID: ${{ needs.prepare.outputs.workflow_id }}
         run: |
-          python .github/scripts/sdk_release.py verify --bundle "$GITHUB_WORKSPACE/sdk-candidate" --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT" --workflow-id "$WORKFLOW_ID"
+          python .github/scripts/sdk_release.py verify --bundle "$GITHUB_WORKSPACE/sdk-candidate" --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT" --workflow-id "$WORKFLOW_ID" --source-revision "$SOURCE_REVISION"
           python .github/scripts/sdk_release.py index --bundle "$GITHUB_WORKSPACE/sdk-candidate" --version "$VERSION" --index testpypi --mode match
           python .github/scripts/sdk_release.py index --bundle "$GITHUB_WORKSPACE/sdk-candidate" --version "$VERSION" --index pypi --mode require-absent
       - name: Publish the same reviewed bytes with PyPI Trusted Publishing
@@ -282,9 +289,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SOURCE_RUN: ${{ needs.prepare.outputs.source_run }}
           SOURCE_ATTEMPT: ${{ needs.prepare.outputs.source_attempt }}
+          SOURCE_REVISION: ${{ needs.prepare.outputs.source_revision }}
           WORKFLOW_ID: ${{ needs.prepare.outputs.workflow_id }}
         run: |
-          python .github/scripts/sdk_release.py verify --bundle "$RUNNER_TEMP/sdk-candidate" --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT" --workflow-id "$WORKFLOW_ID"
+          python .github/scripts/sdk_release.py verify --bundle "$RUNNER_TEMP/sdk-candidate" --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT" --workflow-id "$WORKFLOW_ID" --source-revision "$SOURCE_REVISION"
           python .github/scripts/sdk_release.py index --bundle "$RUNNER_TEMP/sdk-candidate" --version "$VERSION" --index pypi --mode match
           python -m pip download --no-cache-dir --no-deps --only-binary=:all: --index-url https://pypi.org/simple --dest "$RUNNER_TEMP/index-wheel" "voxriva-sdk==$VERSION"
           python .github/scripts/sdk_release.py downloaded --bundle "$RUNNER_TEMP/sdk-candidate" --version "$VERSION" --directory "$RUNNER_TEMP/index-wheel"
