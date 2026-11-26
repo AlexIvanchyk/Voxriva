@@ -59,6 +59,26 @@ active pointers, provider revisions and attempts. Changing preview data does not
 send; publishing does not change a deployment. The [first API email](quickstart.md)
 uses this exact fixture without a UI setup prerequisite.
 
+## Inspect Northstar email layouts
+
+Check out the 0.2.0 source, then start a separate local example from the repository root:
+
+```sh
+python3 scripts/example.py up --layout-preview --name northstar-layouts
+```
+
+Open the printed editor URL and use the protected access file printed by the
+launcher. Northstar opens with fictional preview data and the active daylight
+layout. In the **Content** tab, choose **Layout version → en · main · v2** to
+preview the evening edition. Choose **No layout** in **Email layout** to view the
+letter body on its own. These changes can be inspected before saving.
+
+Use **Template version → main · v1** next to **Editing language** to view the
+published letter. **Current draft** brings back the in-progress draft and its
+layout selection. See [Author email layouts](workspace-guide.md#author-email-layouts).
+To pause this example while keeping its state, run
+`python3 scripts/example.py stop --name northstar-layouts`.
+
 ## Repeat and lifecycle
 
 Rerunning the launcher starts stopped services and verifies its original sample.

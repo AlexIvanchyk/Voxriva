@@ -49,6 +49,8 @@ class BranchInput(BaseModel):
 
 
 class PublishInput(BaseModel):
+    project_id: UUID | None = None
+    environment_id: UUID | None = None
     branch_id: UUID
     expected_revision: int = Field(ge=1)
     message: str = Field(default="", max_length=500)

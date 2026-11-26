@@ -50,12 +50,17 @@ from backend.app.features.providers.models import (
 from backend.app.features.providers.schemas import BindingVersion
 from backend.app.features.providers.service import binding_version, resolve_binding
 from backend.app.features.templates.formats import runtime_issue_message
+from backend.app.features.templates.layouts import (
+    pinned_layout,
+    render_version,
+    resolve_layout,
+)
 from backend.app.features.templates.models import (
     Template,
     TemplateProject,
     TemplateVersion,
 )
-from backend.app.features.templates.rendering import DraftContent, render_message
+from backend.app.features.templates.rendering import DraftContent
 from backend.app.features.templates.versions_service import summary
 from backend.app.infrastructure.context import ApplicationContext
 from backend.app.infrastructure.database import utcnow
@@ -150,8 +155,10 @@ async def prepare(
         .join(TemplateProject)
         .where(
             Template.key == payload.template_key,
+            Template.is_layout.is_(False),
             TemplateProject.project_id == scope.project_id,
         )
+        .with_for_update(read=True, of=Template)
     )
     if template is None:
         raise ApplicationError(404, "Template is not connected to this project")
@@ -183,6 +190,21 @@ async def prepare(
                 environment_id=scope.environment_id,
             ),
             template.channel,
+        )
+    draft = DraftContent.model_validate(saved.content)
+    layout = None
+    if original and not current_deployments:
+        layout = await pinned_layout(db, draft.layout, original.layout_version_id)
+    elif draft.layout:
+        layout = await resolve_layout(
+            db,
+            draft.layout,
+            ScopeInput(
+                scope="environment",
+                project_id=scope.project_id,
+                environment_id=scope.environment_id,
+                locale=saved.locale,
+            ),
         )
     if provider is None:
         raise ApplicationError(
@@ -231,11 +253,7 @@ async def prepare(
             429, "Rendering capacity is busy. Retry with the same idempotency key."
         )
     async with slots:
-        result = await render_message(
-            template.channel,
-            DraftContent.model_validate(saved.content),
-            payload.context,
-        )
+        result = await render_version(template.channel, draft, layout, payload.context)
     if result.errors:
         raise ApplicationError(
             422,
@@ -307,6 +325,7 @@ async def prepare(
             "provider_revision": revision.number,
             "provider_scope": provider_scope,
         },
+        layout.id if layout else None,
     )
 
 
@@ -392,6 +411,7 @@ async def enqueue(
         delivery_key_id=scope.key_id,
         template_id=template.id,
         template_version_id=saved.id,
+        layout_version_id=prepared.layout_version_id,
         provider_revision_id=revision.id,
         channel=template.channel,
         locale=payload.locale,

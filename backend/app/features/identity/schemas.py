@@ -45,6 +45,7 @@ class SessionView(BaseModel):
 class Principal:
     account: Account
     token: str
+    project_ids: frozenset[UUID] | None = None
 
 
 class MFAChallengeView(BaseModel):

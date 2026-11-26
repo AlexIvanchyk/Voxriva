@@ -1,6 +1,9 @@
 # Release status and compatibility
 
-Application, frontend and Python SDK **0.1.1** are published as a prerelease.
+The application, frontend and Python SDK source are version **0.2.0**. See the
+[0.2.0 source prerelease notes](releases/0.2.0.md) for changes and upgrade steps.
+
+The published images, operator bundle and PyPI SDK listed below are **0.1.1**.
 The images target **linux/amd64**. No production support SLA or measured capacity
 guarantee is published. The earlier source-only 0.1.0 release remains available.
 

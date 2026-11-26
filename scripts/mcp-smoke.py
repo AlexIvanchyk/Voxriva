@@ -140,6 +140,81 @@ async def main():
                     preview["result"]["rendered"]["subject"]
                     == "Welcome Synthetic Long Name"
                 )
+                layout = (
+                    await call(
+                        "create_template",
+                        payload={
+                            "name": "Fictional Lighthouse layout",
+                            "key": "mcp-smoke-layout",
+                            "channel": "email",
+                            "is_layout": True,
+                            "project_ids": [project["id"]],
+                            "draft": {
+                                "html": "<header>Lighthouse</header><!-- voxriva:body -->"
+                            },
+                        },
+                    )
+                )["result"]
+                found = await call(
+                    "list_templates", is_layout=True, project_id=project["id"]
+                )
+                assert [item["id"] for item in found["result"]["items"]] == [
+                    layout["id"]
+                ]
+                assert found["result"]["items"][0]["is_layout"]
+                layout_path = f"/templates/{layout['id']}"
+                published_layout = await post(
+                    layout_path + "/publish",
+                    {"branch_id": layout["branch_id"], "expected_revision": 1},
+                )
+                project_path = f"/projects/{project['id']}"
+                environment = await post(
+                    project_path + "/environments", {"name": "layout-mcp"}
+                )
+                empty = await post(
+                    project_path + "/environments", {"name": "without-layout"}
+                )
+                target = {
+                    "project_id": project["id"],
+                    "environment_id": environment["id"],
+                }
+                await post(
+                    layout_path + "/deployments/deploy",
+                    {
+                        **target,
+                        "scope": "environment",
+                        "locale": "en",
+                        "expected_generation": 0,
+                        "version_id": published_layout["id"],
+                    },
+                )
+                proposal = {**draft, "layout": {"template_id": layout["id"]}}
+                explicit = await call(
+                    "preview",
+                    template_id=template["id"],
+                    payload={
+                        **target,
+                        "draft": proposal,
+                        "branch_id": template["branch_id"],
+                    },
+                )
+                assert (
+                    explicit["result"]["layout"]["version_id"] == published_layout["id"]
+                )
+                assert (
+                    "<header>Lighthouse</header>"
+                    in explicit["result"]["rendered"]["html"]
+                )
+                missing = await call(
+                    "preview",
+                    template_id=template["id"],
+                    payload={
+                        **target,
+                        "environment_id": empty["id"],
+                        "draft": proposal,
+                    },
+                )
+                assert missing["status"] == 422 and not missing["ok"]
                 changed = {
                     **draft,
                     "html": draft["html"].replace(
@@ -270,6 +345,7 @@ async def main():
                 "tools": names,
                 "read_create_language_branch_preview": "passed",
                 "batch": ["conflict", "saved"],
+                "layout_discovery_and_environment_preview": "passed",
                 "postgres_concurrent_saves": concurrency,
                 "immutable_version": "unchanged",
                 "secret_redaction": "passed",

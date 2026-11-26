@@ -123,3 +123,10 @@ async def validate_image(
     """Validate an upload for this template; saving the draft persists it atomically."""
     await service.lookup(db, principal, template_id, write=True)
     return payload
+
+
+@router.get("/{template_id}/layout-options")
+async def layout_options(
+    template_id: UUID, db: Database, principal: PrincipalDependency
+) -> dict[str, object]:
+    return await service.layout_options(template_id, db, principal)

@@ -15,7 +15,7 @@ from backend.app.features.templates.models import (
 )
 from backend.app.features.templates.rendering import DraftContent, RenderResult
 from backend.app.features.templates.schemas import PreviewInput
-from backend.app.features.templates.service import get_branch, lookup, run_preview
+from backend.app.features.templates.service import get_branch, lookup, preview_content
 from backend.app.features.templates.versions_schemas import (
     BranchInput,
     BranchView,
@@ -215,7 +215,7 @@ async def publish(
     if (
         item.channel == "email"
         and (
-            not content.subject.strip()
+            (not item.is_layout and not content.subject.strip())
             or not (content.html.strip() or content.text.strip())
         )
         or (
@@ -227,20 +227,25 @@ async def publish(
             422,
             "Complete the subject and HTML/text, or the push title and body, before publishing",
         )
-    report = await run_preview(
-        item.channel, content, content.preview_context, runtime, principal
+    scope = PreviewInput(
+        project_id=payload.project_id, environment_id=payload.environment_id
     )
-    if not report.errors and content.runtime_defaults:
-        report = await run_preview(
-            item.channel,
+    report = await preview_content(
+        item, content, branch.locale, scope, runtime, db, principal
+    )
+    if not report.errors and (
+        content.runtime_defaults
+        or (report.layout and report.layout["runtime_defaults"])
+    ):
+        report = await preview_content(
+            item,
             content,
-            {
-                key: value
-                for key, value in content.preview_context.items()
-                if key not in content.runtime_defaults
-            },
+            branch.locale,
+            scope,
             runtime,
+            db,
             principal,
+            check_defaults=True,
         )
     if report.errors:
         raise ApplicationError(
@@ -333,13 +338,6 @@ async def version_preview(
             "Published previews use immutable content; supply context or a saved scenario only",
         )
     content = DraftContent.model_validate(item.content)
-    context = (
-        payload.context if payload.context is not None else content.preview_context
-    )
-    if payload.scenario is not None:
-        if payload.scenario not in content.scenarios:
-            raise ApplicationError(422, "Preview scenario not found")
-        context = content.scenarios[payload.scenario]
-    return await run_preview(
-        template.channel, content, context, runtime, principal, authoring=False
+    return await preview_content(
+        template, content, item.locale, payload, runtime, db, principal, authoring=False
     )

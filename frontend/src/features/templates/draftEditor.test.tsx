@@ -126,5 +126,36 @@ it("preserves fixture data when bounded example generation fails", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Generate example" }));
   expect(await screen.findByText("Supply a valid schema example.")).toBeVisible();
   expect(screen.getByLabelText("Test data phone")).toHaveValue("Keep my unsaved fixture");
-  expect(authenticatedRequest).toHaveBeenCalledWith(expect.anything(), "/templates/welcome/preview", "POST", { draft: item.draft, generate_example: true });
+  expect(authenticatedRequest).toHaveBeenCalledWith(expect.anything(), "/templates/welcome/preview", "POST", { draft: item.draft, branch_id: item.branch_id, generate_example: true });
+});
+
+it("opens a composed welcome email and previews pinning or detaching without saving its body", async () => {
+  const { item, mount } = editor();
+  const source = "<h1>Hello {{ name }}</h1>";
+  const versions = [
+    { id: "day", number: 1, branch: "main", locale: "en" },
+    { id: "night", number: 2, branch: "main", locale: "en" },
+  ];
+  Object.assign(item.draft, { html: source, subject: "Welcome", preview_context: { name: "Alex" }, layout: { template_id: "brand", version_id: null } });
+  vi.mocked(authenticatedRequest).mockImplementation(async (_session, path, _method, payload) => {
+    if (path.endsWith("/layout-options")) return { layouts: [{ id: "brand", name: "Northstar", fallback_locale: "en", versions }], targets: [] } as never;
+    const { draft } = payload as { draft: Template["draft"] };
+    const selected = versions.find((v) => v.id === draft.layout?.version_id) ?? versions[0];
+    const layout = draft.layout && { ...selected, template_id: "brand", version_id: selected.id, images: [], runtime_defaults: {}, variable_schema: { properties: { phone: { type: "string" } } } };
+    return { layout, errors: [], diagnostics: [], rendered: { subject: draft.subject, html: (layout?.id ?? "Standalone") + draft.html.replace("{{ name }}", String(draft.preview_context.name)), text: "" } } as never;
+  });
+  mount();
+  expect(await screen.findByText("Layout · en · main · v1")).toBeVisible();
+  expect(screen.getByTitle("Email HTML preview").getAttribute("srcdoc")).toContain("day<h1>Hello Alex</h1>");
+  expect(screen.getByRole("button", { name: "{{ phone }}" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Save draft" })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText("Layout version"), { target: { value: "night" } });
+  expect(await screen.findByText("Layout · en · main · v2")).toBeVisible();
+  expect(screen.getByTitle("Email HTML preview").getAttribute("srcdoc")).toContain("night<h1>Hello Alex</h1>");
+  fireEvent.change(screen.getByLabelText("Email layout"), { target: { value: "" } });
+  await waitFor(() => expect(screen.getByTitle("Email HTML preview").getAttribute("srcdoc")).toContain("Standalone<h1>Hello Alex</h1>"), { timeout: 3000 });
+  fireEvent.change(screen.getByLabelText("Email layout"), { target: { value: "brand" } });
+  expect(await screen.findByText("Layout · en · main · v1")).toBeVisible();
+  expect(screen.getByLabelText("Email HTML")).toHaveValue(source);
+  expect(vi.mocked(authenticatedRequest).mock.calls.some((call) => call[2] === "PUT")).toBe(false);
 });
