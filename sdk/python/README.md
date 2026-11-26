@@ -4,17 +4,18 @@ Typed synchronous and asynchronous clients for the Voxriva delivery API. Python 
 the only direct runtime dependency is HTTPX. No server, database, Celery, AWS or Firebase
 packages are installed. `py.typed` is included.
 
-Install the bundled wheel from **API keys → Integration examples → Download Python SDK**:
+Install from PyPI:
 
 ```bash
-python -m pip install /path/to/voxriva_sdk-0.1.0-py3-none-any.whl
+python -m pip install voxriva-sdk==0.1.1
 ```
 
-For local development, run `python -m pip install ./sdk/python` from the Voxriva repository.
-This version is bundled locally; it has not been published to PyPI.
+The same version is also bundled with the application under **API keys →
+Integration examples → Download Python SDK**. For local development, run
+`python -m pip install ./sdk/python` from the Voxriva repository.
 
 For runnable requests against the prepared local fixture, use
-[API/SDK integration](../../docs/journeys/integrate.md). The reference below uses
+[API/SDK integration](https://alexivanchyk.github.io/Voxriva/journeys/integrate/). The reference below uses
 an illustrative `welcome` contract with a required `name`; adapt it to your
 published schema rather than assuming that template is preconfigured.
 
@@ -132,16 +133,16 @@ send E.164 text such as `context={"phone": "+12025550123"}`. National numbers, s
 and extensions are rejected. No country is guessed and no value is normalized.
 `Client.validate` / `AsyncClient.validate` use the same server rules as acceptance;
 phone validity does not verify ownership or send an SMS. No client dependency is
-needed. See [variable format rules](../../docs/variable-formats.md).
+needed. See [variable format rules](https://alexivanchyk.github.io/Voxriva/variable-formats/).
 
 ## Image values
 
-Use `image_from_bytes(content: bytes, media_type: str)` in a context field declared as Image v1. It accepts PNG, JPEG or WebP up to 256 KiB; the server decodes and validates format/dimensions. See [the full image contract and examples](../../docs/email-images.md). Omit the field to use an explicit published runtime default. Synthetic fixtures never fill delivery context.
+Use `image_from_bytes(content: bytes, media_type: str)` in a context field declared as Image v1. It accepts PNG, JPEG or WebP up to 256 KiB; the server decodes and validates format/dimensions. See [the full image contract and examples](https://alexivanchyk.github.io/Voxriva/email-images/). Omit the field to use an explicit published runtime default. Synthetic fixtures never fill delivery context.
 
 ## License and distribution
 
-The SDK own code uses [MIT](LICENSE), attributed to Voxriva contributors. HTTPX
+The SDK own code uses [MIT](https://github.com/AlexIvanchyk/Voxriva/blob/main/sdk/python/LICENSE), attributed to Voxriva contributors. HTTPX
 and its transitive dependencies retain their own upstream terms. See the server
-source [third-party notices](../../THIRD_PARTY_NOTICES.md) for redistribution
-requirements. [Release status](../../docs/release-status.md) is the current
+source [third-party notices](https://github.com/AlexIvanchyk/Voxriva/blob/main/THIRD_PARTY_NOTICES.md) for redistribution
+requirements. [Release status](https://alexivanchyk.github.io/Voxriva/release-status/) is the current
 reference for package availability, platform scope and compatibility.

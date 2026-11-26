@@ -1,0 +1,291 @@
+name: Python SDK release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: SDK version matching source metadata (without v)
+        required: true
+        default: '0.1.1'
+        type: string
+      target:
+        description: Build only, publish to TestPyPI, or verify TestPyPI then publish to PyPI
+        required: true
+        default: candidate
+        type: choice
+        options: [candidate, testpypi, pypi]
+      candidate_run_id:
+        description: Reuse exact artifacts from a successful SDK run at this same commit
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: sdk-release-${{ github.ref }}-${{ inputs.version }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: '1'
+  VERSION: ${{ inputs.version }}
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      artifact: ${{ steps.plan.outputs.artifact }}
+      source_run: ${{ steps.plan.outputs.source_run }}
+      source_attempt: ${{ steps.plan.outputs.source_attempt }}
+      workflow_id: ${{ steps.plan.outputs.workflow_id }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Validate version, tag and optional candidate provenance against GitHub
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET: ${{ inputs.target }}
+          CANDIDATE_RUN_ID: ${{ inputs.candidate_run_id }}
+        run: python .github/scripts/sdk_release.py plan --version "$VERSION" --target "$TARGET" --candidate-run-id "$CANDIDATE_RUN_ID"
+      - name: Build the wheel and sdist once, with the wheel built from that sdist
+        if: inputs.candidate_run_id == ''
+        run: |
+          python -m unittest discover -s .github/tests -p test_sdk_release.py -v
+          python -m venv "$RUNNER_TEMP/sdk-build-tools"
+          "$RUNNER_TEMP/sdk-build-tools/bin/python" -m pip install build==1.6.1 twine==7.0.0
+          "$RUNNER_TEMP/sdk-build-tools/bin/python" -m build --outdir "$RUNNER_TEMP/sdk-candidate/dist" sdk/python
+          "$RUNNER_TEMP/sdk-build-tools/bin/python" -m twine check --strict "$RUNNER_TEMP/sdk-candidate/dist/"*
+      - name: Seal file contents, licenses, type marker and source identity
+        if: inputs.candidate_run_id == ''
+        env:
+          SOURCE_RUN: ${{ steps.plan.outputs.source_run }}
+          SOURCE_ATTEMPT: ${{ steps.plan.outputs.source_attempt }}
+          WORKFLOW_ID: ${{ steps.plan.outputs.workflow_id }}
+        run: >-
+          python .github/scripts/sdk_release.py seal --bundle "$RUNNER_TEMP/sdk-candidate"
+          --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT"
+          --workflow-id "$WORKFLOW_ID"
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        if: inputs.candidate_run_id != ''
+        with:
+          artifact-ids: ${{ steps.plan.outputs.artifact_id }}
+          run-id: ${{ steps.plan.outputs.source_run }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/sdk-candidate
+          merge-multiple: true
+      - name: Verify the unchanged candidate bundle
+        env:
+          SOURCE_RUN: ${{ steps.plan.outputs.source_run }}
+          SOURCE_ATTEMPT: ${{ steps.plan.outputs.source_attempt }}
+          WORKFLOW_ID: ${{ steps.plan.outputs.workflow_id }}
+        run: >-
+          python .github/scripts/sdk_release.py verify --bundle "$RUNNER_TEMP/sdk-candidate"
+          --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT"
+          --workflow-id "$WORKFLOW_ID"
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: inputs.candidate_run_id == ''
+        with:
+          name: ${{ steps.plan.outputs.artifact }}
+          path: ${{ runner.temp }}/sdk-candidate/
+          if-no-files-found: error
+          retention-days: 30
+
+  install:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.13']
+        format: [wheel, sdist]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ${{ needs.prepare.outputs.artifact }}
+          run-id: ${{ needs.prepare.outputs.source_run }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/sdk-candidate
+      - name: Recheck downloaded distributions before installing
+        env:
+          SOURCE_RUN: ${{ needs.prepare.outputs.source_run }}
+          SOURCE_ATTEMPT: ${{ needs.prepare.outputs.source_attempt }}
+          WORKFLOW_ID: ${{ needs.prepare.outputs.workflow_id }}
+        run: >-
+          python .github/scripts/sdk_release.py verify --bundle "$RUNNER_TEMP/sdk-candidate"
+          --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT"
+          --workflow-id "$WORKFLOW_ID"
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Test sync and async SDK installed outside the source tree
+        env:
+          FORMAT: ${{ matrix.format }}
+        run: |
+          distribution="$RUNNER_TEMP/sdk-candidate/dist/voxriva_sdk-$VERSION-py3-none-any.whl"
+          if test "$FORMAT" = sdist; then distribution="$RUNNER_TEMP/sdk-candidate/dist/voxriva_sdk-$VERSION.tar.gz"; fi
+          python .github/scripts/sdk_install_check.py --distribution "$distribution" --version "$VERSION" --tests sdk/python/tests/test_client.py
+
+  testpypi:
+    if: inputs.target != 'candidate'
+    needs: [prepare, install]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/voxriva-sdk/${{ inputs.version }}/
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ${{ needs.prepare.outputs.artifact }}
+          run-id: ${{ needs.prepare.outputs.source_run }}
+          github-token: ${{ github.token }}
+          path: ${{ github.workspace }}/sdk-candidate
+      - name: Verify provenance and refuse changed TestPyPI releases
+        id: index
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ needs.prepare.outputs.source_run }}
+          SOURCE_ATTEMPT: ${{ needs.prepare.outputs.source_attempt }}
+          WORKFLOW_ID: ${{ needs.prepare.outputs.workflow_id }}
+        run: |
+          python .github/scripts/sdk_release.py verify --bundle "$GITHUB_WORKSPACE/sdk-candidate" --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT" --workflow-id "$WORKFLOW_ID"
+          python .github/scripts/sdk_release.py index --bundle "$GITHUB_WORKSPACE/sdk-candidate" --version "$VERSION" --index testpypi --mode prepare-test
+      - name: Publish the reviewed bytes with TestPyPI Trusted Publishing
+        if: steps.index.outputs.upload == 'true'
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: sdk-candidate/dist/
+          skip-existing: false
+          attestations: true
+
+  testpypi-install:
+    needs: [prepare, testpypi]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ${{ needs.prepare.outputs.artifact }}
+          run-id: ${{ needs.prepare.outputs.source_run }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/sdk-candidate
+      - name: Download the actual TestPyPI version, compare hashes and test clean installation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ needs.prepare.outputs.source_run }}
+          SOURCE_ATTEMPT: ${{ needs.prepare.outputs.source_attempt }}
+          WORKFLOW_ID: ${{ needs.prepare.outputs.workflow_id }}
+        run: |
+          python .github/scripts/sdk_release.py verify --bundle "$RUNNER_TEMP/sdk-candidate" --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT" --workflow-id "$WORKFLOW_ID"
+          python .github/scripts/sdk_release.py index --bundle "$RUNNER_TEMP/sdk-candidate" --version "$VERSION" --index testpypi --mode match
+          python -m pip download --no-cache-dir --no-deps --only-binary=:all: --index-url https://test.pypi.org/simple --dest "$RUNNER_TEMP/index-wheel" "voxriva-sdk==$VERSION"
+          python .github/scripts/sdk_release.py downloaded --bundle "$RUNNER_TEMP/sdk-candidate" --version "$VERSION" --directory "$RUNNER_TEMP/index-wheel"
+          python .github/scripts/sdk_install_check.py --distribution "$RUNNER_TEMP/index-wheel/voxriva_sdk-$VERSION-py3-none-any.whl" --version "$VERSION" --tests sdk/python/tests/test_client.py
+
+  pypi:
+    if: inputs.target == 'pypi'
+    needs: [prepare, testpypi-install]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/project/voxriva-sdk/${{ inputs.version }}/
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ${{ needs.prepare.outputs.artifact }}
+          run-id: ${{ needs.prepare.outputs.source_run }}
+          github-token: ${{ github.token }}
+          path: ${{ github.workspace }}/sdk-candidate
+      - name: Verify identical candidate bytes and refuse existing PyPI versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ needs.prepare.outputs.source_run }}
+          SOURCE_ATTEMPT: ${{ needs.prepare.outputs.source_attempt }}
+          WORKFLOW_ID: ${{ needs.prepare.outputs.workflow_id }}
+        run: |
+          python .github/scripts/sdk_release.py verify --bundle "$GITHUB_WORKSPACE/sdk-candidate" --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT" --workflow-id "$WORKFLOW_ID"
+          python .github/scripts/sdk_release.py index --bundle "$GITHUB_WORKSPACE/sdk-candidate" --version "$VERSION" --index testpypi --mode match
+          python .github/scripts/sdk_release.py index --bundle "$GITHUB_WORKSPACE/sdk-candidate" --version "$VERSION" --index pypi --mode require-absent
+      - name: Publish the same reviewed bytes with PyPI Trusted Publishing
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          packages-dir: sdk-candidate/dist/
+          skip-existing: false
+          attestations: true
+
+  pypi-install:
+    needs: [prepare, pypi]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ${{ needs.prepare.outputs.artifact }}
+          run-id: ${{ needs.prepare.outputs.source_run }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/sdk-candidate
+      - name: Verify public PyPI files and exercise the published SDK in a clean environment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ needs.prepare.outputs.source_run }}
+          SOURCE_ATTEMPT: ${{ needs.prepare.outputs.source_attempt }}
+          WORKFLOW_ID: ${{ needs.prepare.outputs.workflow_id }}
+        run: |
+          python .github/scripts/sdk_release.py verify --bundle "$RUNNER_TEMP/sdk-candidate" --version "$VERSION" --source-run "$SOURCE_RUN" --source-attempt "$SOURCE_ATTEMPT" --workflow-id "$WORKFLOW_ID"
+          python .github/scripts/sdk_release.py index --bundle "$RUNNER_TEMP/sdk-candidate" --version "$VERSION" --index pypi --mode match
+          python -m pip download --no-cache-dir --no-deps --only-binary=:all: --index-url https://pypi.org/simple --dest "$RUNNER_TEMP/index-wheel" "voxriva-sdk==$VERSION"
+          python .github/scripts/sdk_release.py downloaded --bundle "$RUNNER_TEMP/sdk-candidate" --version "$VERSION" --directory "$RUNNER_TEMP/index-wheel"
+          python .github/scripts/sdk_install_check.py --distribution "$RUNNER_TEMP/index-wheel/voxriva_sdk-$VERSION-py3-none-any.whl" --version "$VERSION" --tests sdk/python/tests/test_client.py

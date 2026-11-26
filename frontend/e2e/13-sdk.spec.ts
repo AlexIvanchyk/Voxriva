@@ -28,7 +28,7 @@ test("Python SDK integration validates without sending and delivers through sync
   const snippet = await dialog.getByRole("tabpanel", { name: "Python", exact: true }).locator(".integration-code").innerText();
   expect(snippet).toContain('client.validate("sdk-welcome"'); expect(snippet).toContain('os.environ["VOXRIVA_API_KEY"]');
   expect(snippet).toContain("\nfrom voxriva_sdk import Client"); expect(snippet).not.toContain(key.key);
-  const wheel = await page.request.get("/downloads/voxriva_sdk-0.1.0-py3-none-any.whl");
+  const wheel = await page.request.get("/downloads/voxriva_sdk-0.1.1-py3-none-any.whl");
   expect(wheel.status()).toBe(200); expect((await wheel.body()).subarray(0, 2).toString()).toBe("PK");
   const contract = await page.request.get("/downloads/delivery-v1.openapi.json");
   expect(contract.status()).toBe(200); expect((await contract.json()).info.version).toBe("1.0.0");

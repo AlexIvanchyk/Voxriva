@@ -8,7 +8,7 @@ needs no cloud account; SES and FCM use your own provider accounts.
 
 | Goal | Route | What you get |
 | --- | --- | --- |
-| Try the product and send a local email | [Quickstart](quickstart.md) | Isolated source-built Compose stack, fictional workspace and Mailpit inbox |
+| Try the product and send a local email | [Quickstart](quickstart.md) | Prebuilt Compose stack, fictional workspace and Mailpit inbox |
 | Develop or configure a persistent local workspace | [Configuration](configuration.md) | Local Compose or native development with explicit bootstrap and setup |
 | Operate a real installation | [Production runbook](../PRODUCTION.md) | Single Linux Docker host, HTTPS, private database/broker, migrations and backup/restore tooling |
 

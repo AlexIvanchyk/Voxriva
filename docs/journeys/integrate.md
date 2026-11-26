@@ -14,16 +14,15 @@ the key. Production applications should obtain them from their own secret
 configuration. The SDK base URL is the installation root, optionally with a
 reverse-proxy path prefix, **not** `/api/v1`. HTTPS is required outside loopback.
 
-Install the independently packaged SDK from the running application's bundled
-wheel, without a dashboard download step:
+Install the independently packaged SDK from PyPI:
 
 ```sh
 python3 -m venv /tmp/voxriva-client
-curl --silent --show-error --fail --noproxy '*' \
-  "$VOXRIVA_URL/downloads/voxriva_sdk-0.1.0-py3-none-any.whl" \
-  --output /tmp/voxriva_sdk-0.1.0-py3-none-any.whl
-/tmp/voxriva-client/bin/python -m pip install /tmp/voxriva_sdk-0.1.0-py3-none-any.whl
+/tmp/voxriva-client/bin/python -m pip install voxriva-sdk==0.1.1
 ```
+
+The matching wheel is also available from **API keys → Integration examples →
+Download Python SDK** in the running application.
 
 The SDK requires Python 3.10+ and HTTPX, with no server/database/provider packages.
 For source development, `python -m pip install ./sdk/python` is also supported.

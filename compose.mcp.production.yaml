@@ -8,7 +8,7 @@ services:
       mcp:
         condition: service_healthy
   mcp:
-    image: ${VOXRIVA_MCP_IMAGE:?Set VOXRIVA_MCP_IMAGE to a locally built versioned MCP image}
+    image: ${VOXRIVA_MCP_IMAGE:?Set VOXRIVA_MCP_IMAGE to a versioned MCP release image}
     restart: unless-stopped
     init: true
     read_only: true

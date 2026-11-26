@@ -77,6 +77,15 @@ def main() -> None:
                 {
                     "version": data["version"],
                     "revision": data["revision"],
+                    "candidate": {
+                        "source": data["source"],
+                        "run_id": data["run_id"],
+                        "run_attempt": data["run_attempt"],
+                    },
+                    "publisher": {
+                        "run_id": os.environ["GITHUB_RUN_ID"],
+                        "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+                    },
                     "complete": len(digests) == len(packages),
                     "images": digests,
                 },

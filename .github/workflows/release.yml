@@ -1,7 +1,8 @@
 name: Release candidate
 
 # No tag-push or release event publishes implicitly. First run with publish=false
-# to review artifacts. A later explicit dispatch from vVERSION may publish.
+# to review artifacts. Supply its candidate_run_id when publishing from vVERSION
+# to promote those exact tested image archives without rebuilding them.
 on:
   workflow_dispatch:
     inputs:
@@ -12,16 +13,23 @@ on:
       application_package:
         description: 'Lowercase GHCR owner/package path, without ghcr.io or a tag'
         required: true
+        default: 'alexivanchyk/voxriva'
         type: string
       mcp_package:
         description: 'Distinct lowercase GHCR owner/package path for the MCP image'
         required: true
+        default: 'alexivanchyk/voxriva-mcp'
         type: string
       publish:
         description: 'Explicitly publish the tested images; requires matching vVERSION tag'
         required: true
         default: false
         type: boolean
+      candidate_run_id:
+        description: 'Optional successful build-only release.yml run to reuse for publish=true; no rebuild'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -40,6 +48,13 @@ jobs:
   preflight:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      source_run_id: ${{ steps.candidate.outputs.run_id }}
+      source_run_attempt: ${{ steps.candidate.outputs.run_attempt }}
+      artifact_id: ${{ steps.candidate.outputs.artifact_id }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -49,17 +64,28 @@ jobs:
           python-version: '3.13'
       - name: Validate versions, explicit namespaces and publication request
         run: python .github/scripts/release_metadata.py preflight --root . --version "$RELEASE_VERSION"
+      - name: Approve the exact successful candidate run and immutable artifact
+        if: inputs.candidate_run_id != ''
+        id: candidate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CANDIDATE_RUN_ID: ${{ inputs.candidate_run_id }}
+        run: python .github/scripts/release_metadata.py candidate --candidate-run-id "$CANDIDATE_RUN_ID" --version "$RELEASE_VERSION"
 
   checks:
     needs: preflight
+    if: inputs.candidate_run_id == ''
     permissions:
       contents: read
     uses: ./.github/workflows/ci.yml
 
   package:
     needs: checks
+    if: inputs.candidate_run_id == ''
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    outputs:
+      artifact_id: ${{ steps.candidate.outputs.artifact-id }}
     env:
       DOCKER_DEFAULT_PLATFORM: linux/amd64
     steps:
@@ -93,6 +119,7 @@ jobs:
       - name: Build, test, scan and index exact application and MCP images
         run: bash .github/scripts/build-candidate.sh "$RELEASE_VERSION" "$GITHUB_SHA" "$RELEASE_OUTPUT"
       - name: Retain versioned images, SDK wheel, metadata and checksums
+        id: candidate
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: release-${{ inputs.version }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -102,13 +129,16 @@ jobs:
           compression-level: 0
 
   publish:
-    needs: package
-    if: inputs.publish && github.ref_type == 'tag'
+    needs: [preflight, package]
+    if: always() && inputs.publish && github.ref_type == 'tag' && needs.preflight.result == 'success' && (needs.package.result == 'success' || (inputs.candidate_run_id != '' && needs.package.result == 'skipped'))
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: ghcr-publish
+    outputs:
+      digest_artifact_id: ${{ steps.digests.outputs.artifact-id }}
     permissions:
       contents: read
+      actions: read
       packages: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -117,11 +147,24 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.13'
-      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        with:
-          name: release-${{ inputs.version }}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/verified-candidate
+      - name: Download the exact candidate and strictly verify its API archive digest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CANDIDATE_RUN_ID: ${{ needs.preflight.outputs.source_run_id }}
+          CANDIDATE_RUN_ATTEMPT: ${{ needs.preflight.outputs.source_run_attempt }}
+          CANDIDATE_ARTIFACT_ID: ${{ needs.preflight.outputs.artifact_id || needs.package.outputs.artifact_id }}
+        run: |
+          source_args=()
+          if test -n "$CANDIDATE_RUN_ID"; then
+            source_args=(--candidate-run-id "$CANDIDATE_RUN_ID" --candidate-run-attempt "$CANDIDATE_RUN_ATTEMPT")
+          fi
+          python .github/scripts/release_metadata.py download --output "$RUNNER_TEMP/verified-candidate" --version "$RELEASE_VERSION" --artifact-id "$CANDIDATE_ARTIFACT_ID" "${source_args[@]}"
       - name: Verify indexed artifacts and loaded image IDs before authenticating
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CANDIDATE_RUN_ID: ${{ needs.preflight.outputs.source_run_id }}
+          CANDIDATE_RUN_ATTEMPT: ${{ needs.preflight.outputs.source_run_attempt }}
+          CANDIDATE_ARTIFACT_ID: ${{ needs.preflight.outputs.artifact_id }}
         run: |
           {
             printf 'RELEASE_OUTPUT=%s/verified-candidate\n' "$RUNNER_TEMP"
@@ -129,7 +172,11 @@ jobs:
           } >> "$GITHUB_ENV"
           export RELEASE_OUTPUT="$RUNNER_TEMP/verified-candidate"
           python .github/scripts/release_metadata.py preflight --root . --version "$RELEASE_VERSION"
-          python .github/scripts/release_metadata.py verify --root "$RELEASE_OUTPUT" --version "$RELEASE_VERSION"
+          source_args=()
+          if test -n "$CANDIDATE_RUN_ID"; then
+            source_args=(--candidate-run-id "$CANDIDATE_RUN_ID" --candidate-run-attempt "$CANDIDATE_RUN_ATTEMPT" --artifact-id "$CANDIDATE_ARTIFACT_ID")
+          fi
+          python .github/scripts/release_metadata.py verify --root "$RELEASE_OUTPUT" --version "$RELEASE_VERSION" "${source_args[@]}"
           docker load --input "$RELEASE_OUTPUT/application/voxriva-image.tar"
           docker load --input "$RELEASE_OUTPUT/mcp/voxriva-mcp-image.tar"
           python - <<'PY'
@@ -155,6 +202,7 @@ jobs:
         if: always()
         run: rm -rf -- "$DOCKER_CONFIG"
       - name: Retain registry manifest digests separately from immutable candidate checksums
+        id: digests
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
@@ -162,3 +210,50 @@ jobs:
           path: ${{ runner.temp }}/published-digests.json
           if-no-files-found: warn # Failed/partial publication still leaves the job failed.
           retention-days: 90
+
+  github-release:
+    needs: [preflight, package, publish]
+    if: always() && needs.publish.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: source-release
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Download the same exact candidate without rebuilding
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CANDIDATE_RUN_ID: ${{ needs.preflight.outputs.source_run_id }}
+          CANDIDATE_RUN_ATTEMPT: ${{ needs.preflight.outputs.source_run_attempt }}
+          CANDIDATE_ARTIFACT_ID: ${{ needs.preflight.outputs.artifact_id || needs.package.outputs.artifact_id }}
+        run: |
+          source_args=()
+          if test -n "$CANDIDATE_RUN_ID"; then
+            source_args=(--candidate-run-id "$CANDIDATE_RUN_ID" --candidate-run-attempt "$CANDIDATE_RUN_ATTEMPT")
+          fi
+          python .github/scripts/release_metadata.py download --output "$RUNNER_TEMP/release-candidate" --version "$RELEASE_VERSION" --artifact-id "$CANDIDATE_ARTIFACT_ID" "${source_args[@]}"
+      - name: Download this publishing run's exact digest evidence
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          artifact-ids: ${{ needs.publish.outputs.digest_artifact_id }}
+          merge-multiple: true
+          path: ${{ runner.temp }}/published-evidence
+      - name: Verify candidate and GHCR provenance, then create the prerelease without overwriting
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CANDIDATE_RUN_ID: ${{ needs.preflight.outputs.source_run_id }}
+          CANDIDATE_RUN_ATTEMPT: ${{ needs.preflight.outputs.source_run_attempt }}
+          CANDIDATE_ARTIFACT_ID: ${{ needs.preflight.outputs.artifact_id || needs.package.outputs.artifact_id }}
+        run: |
+          source_args=()
+          if test -n "$CANDIDATE_RUN_ID"; then
+            source_args=(--candidate-run-id "$CANDIDATE_RUN_ID" --candidate-run-attempt "$CANDIDATE_RUN_ATTEMPT" --artifact-id "$CANDIDATE_ARTIFACT_ID")
+          fi
+          python .github/scripts/release_metadata.py github-release --root "$RUNNER_TEMP/release-candidate" --version "$RELEASE_VERSION" --evidence "$RUNNER_TEMP/published-evidence/published-digests.json" --notes "docs/releases/$RELEASE_VERSION.md" "${source_args[@]}"

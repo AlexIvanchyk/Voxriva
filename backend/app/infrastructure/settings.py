@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="VOXRIVA_")
 
-    version: str = "0.1.0"
+    version: str = "0.1.1"
     database_url: str | None = Field(default=None, repr=False)
     database_url_file: Path | None = None
     metrics_token_file: Path | None = None

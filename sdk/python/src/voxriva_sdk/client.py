@@ -149,7 +149,7 @@ class _Base:
             raise InputError("Runtime context must contain finite JSON values.") from None
 
     def _headers(self, key: str | None, public: bool) -> dict[str, str]:
-        headers = {"Accept": "application/json", "User-Agent": "voxriva-sdk/0.1.0"}
+        headers = {"Accept": "application/json", "User-Agent": "voxriva-sdk/0.1.1"}
         if not public:
             headers["Authorization"] = "Bearer "+self._api_key
         if key:
