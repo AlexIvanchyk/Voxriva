@@ -8,12 +8,26 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.features.deployments.layout_contracts import (
+    active_contracts,
+    dependent_letters,
+)
 from backend.app.features.deployments.models import TemplateDeployment
 from backend.app.features.identity.schemas import Principal
 from backend.app.features.identity.service import audit, commit
-from backend.app.features.projects.models import Membership, Project
+from backend.app.features.projects.models import Environment, Membership, Project
 from backend.app.features.projects.schemas import NamedResource
 from backend.app.features.projects.service import project_access
+from backend.app.features.templates.composition import (
+    compose,
+    layout_parts,
+    validate_kind,
+)
+from backend.app.features.templates.layouts import (
+    preview_scope,
+    published_layout,
+    resolve_layout,
+)
 from backend.app.features.templates.models import (
     Template,
     TemplateBranch,
@@ -87,6 +101,7 @@ async def view(
         name=item.name,
         key=item.key,
         channel=item.channel,
+        is_layout=item.is_layout,
         draft=DraftContent.model_validate(branch.draft),
         draft_revision=branch.draft_revision,
         updated_at=branch.updated_at,
@@ -170,6 +185,33 @@ async def check_bindings(
             raise ApplicationError(403, "Template editor access required")
 
 
+async def check_layout_reference(
+    db: AsyncSession,
+    principal: Principal,
+    draft: DraftContent,
+    projects: list[UUID],
+    locale: str,
+) -> None:
+    if not draft.layout:
+        return
+    layout = await lookup(db, principal, draft.layout.template_id)
+    if not layout.is_layout:
+        raise ApplicationError(422, "Select an email layout")
+    if projects and not await db.scalar(
+        select(TemplateProject.project_id)
+        .where(
+            TemplateProject.template_id == layout.id,
+            TemplateProject.project_id.in_(projects),
+        )
+        .limit(1)
+    ):
+        raise ApplicationError(
+            404, "Email layout is unavailable in the connected projects"
+        )
+    if draft.layout.version_id:
+        await published_layout(db, layout, draft.layout.version_id, locale)
+
+
 async def list_templates(
     db: AsyncSession, principal: Principal, project_id: UUID | None = None
 ) -> list[TemplateView]:
@@ -196,12 +238,17 @@ async def list_templates(
 async def create_template(
     payload: TemplateInput, db: AsyncSession, principal: Principal
 ) -> TemplateView:
+    validate_kind(payload.channel, payload.is_layout, payload.draft)
     await check_bindings(db, principal, payload.project_ids)
+    await check_layout_reference(
+        db, principal, payload.draft, payload.project_ids, payload.locale
+    )
     item = Template(
         id=uuid4(),
         key=payload.key,
         name=payload.name,
         channel=payload.channel,
+        is_layout=payload.is_layout,
         primary_locale=payload.locale,
         fallback_locale=payload.locale,
         updated_at=utcnow(),
@@ -283,6 +330,11 @@ async def bind_projects(
             for identifier in payload.project_ids
         ]
     )
+    await db.flush()
+    if item.is_layout and removed:
+        await active_contracts(db, await dependent_letters(db, item.id), None, item.id)
+    elif not item.is_layout and set(payload.project_ids) - current:
+        await active_contracts(db, [item], None)
     audit(db, principal.account.id, "template.projects.update", template_id)
     await commit(db)
     return await view(db, principal, item)
@@ -293,6 +345,18 @@ async def save_draft(
 ) -> TemplateView:
     item = await lookup(db, principal, template_id, write=True)
     branch = await get_branch(db, template_id, payload.branch_id)
+    validate_kind(item.channel, item.is_layout, payload.draft)
+    if payload.draft.layout:
+        projects = list(
+            await db.scalars(
+                select(TemplateProject.project_id).where(
+                    TemplateProject.template_id == item.id
+                )
+            )
+        )
+        await check_layout_reference(
+            db, principal, payload.draft, projects, branch.locale
+        )
     changed = await db.scalar(
         update(TemplateBranch)
         .where(
@@ -342,22 +406,79 @@ async def preview(
     principal: Principal,
 ) -> RenderResult:
     item = await lookup(db, principal, template_id, write=payload.draft is not None)
-    draft = payload.draft or DraftContent.model_validate(
-        (await get_branch(db, item.id, payload.branch_id)).draft
+    branch = await get_branch(db, item.id, payload.branch_id)
+    draft = payload.draft or DraftContent.model_validate(branch.draft)
+    return await preview_content(
+        item, draft, branch.locale, payload, runtime, db, principal
     )
-    context = payload.context if payload.context is not None else draft.preview_context
+
+
+async def preview_content(
+    item: Template,
+    draft: DraftContent,
+    locale: str,
+    payload: PreviewInput,
+    runtime: ApplicationContext,
+    db: AsyncSession,
+    principal: Principal,
+    *,
+    authoring: bool = True,
+    check_defaults: bool = False,
+) -> RenderResult:
+    validate_kind(item.channel, item.is_layout, draft)
+    wrappers = None
+    metadata = None
+    fixtures = {}
+    local_context = draft.preview_context
+    scenarios = draft.scenarios
+    if item.is_layout:
+        wrappers = layout_parts(draft)
+        draft = draft.model_copy(update={field: "Email body" for field in wrappers})
+    elif draft.layout:
+        target = await preview_scope(
+            db, principal, item.id, locale, payload.project_id, payload.environment_id
+        )
+        saved = await resolve_layout(db, draft.layout, target)
+        layout = DraftContent.model_validate(saved.content)
+        layout_branch = await get_branch(db, saved.template_id, saved.branch_id)
+        metadata = {
+            "template_id": str(saved.template_id),
+            "version_id": str(saved.id),
+            "number": saved.number,
+            "locale": saved.locale,
+            "branch": layout_branch.name,
+            **target.model_dump(mode="json", exclude={"locale"}),
+            "variable_schema": layout.variable_schema,
+            "runtime_defaults": layout.runtime_defaults,
+            "images": list(layout.images),
+        }
+        fixtures = layout.preview_context
+        wrappers = layout_parts(layout)
+        draft = compose(draft, layout)
+    context = payload.context if payload.context is not None else local_context
     if payload.scenario is not None:
-        if payload.scenario not in draft.scenarios:
+        if payload.scenario not in scenarios:
             raise ApplicationError(422, "Preview scenario not found")
-        context = draft.scenarios[payload.scenario]
-    return await run_preview(
+        context = scenarios[payload.scenario]
+    context = {**fixtures, **context}
+    if check_defaults:
+        context = {
+            key: value
+            for key, value in context.items()
+            if key not in draft.runtime_defaults
+        }
+    result = await run_preview(
         item.channel,
         draft,
         context,
         runtime,
         principal,
+        wrappers=wrappers,
         generate_example=payload.generate_example,
+        authoring=authoring,
     )
+    result.layout = metadata
+    return result
 
 
 async def run_preview(
@@ -367,6 +488,7 @@ async def run_preview(
     runtime: ApplicationContext,
     principal: Principal,
     *,
+    wrappers: dict[str, list[str]] | None = None,
     authoring: bool = True,
     generate_example: bool = False,
 ) -> RenderResult:
@@ -395,6 +517,7 @@ async def run_preview(
             channel,
             draft,
             context,
+            wrappers=wrappers,
             authoring=authoring,
             generate_example=generate_example,
         )
@@ -427,3 +550,76 @@ async def rename_variable(
             return result
         except ValueError as error:
             raise ApplicationError(422, str(error)) from None
+
+
+async def layout_options(
+    template_id: UUID, db: AsyncSession, principal: Principal
+) -> dict[str, object]:
+    letter = await get_template(template_id, db, principal)
+    if letter.is_layout or letter.channel != "email":
+        raise ApplicationError(422, "Select an email template")
+    projects = [project.id for project in letter.projects]
+    query = (
+        select(Template)
+        .where(Template.is_layout.is_(True))
+        .order_by(Template.name, Template.id)
+    )
+    if projects or not principal.account.platform_admin:
+        query = query.where(
+            Template.id.in_(
+                select(TemplateProject.template_id).where(
+                    TemplateProject.project_id.in_(projects)
+                )
+            )
+        )
+    layouts = []
+    for layout in await db.scalars(query):
+        versions = (
+            await db.execute(
+                select(
+                    TemplateVersion.id,
+                    TemplateVersion.number,
+                    TemplateVersion.locale,
+                    TemplateBranch.name,
+                )
+                .join(TemplateBranch, TemplateVersion.branch_id == TemplateBranch.id)
+                .where(TemplateVersion.template_id == layout.id)
+                .order_by(TemplateVersion.created_at.desc())
+            )
+        ).all()
+        layouts.append(
+            {
+                "id": layout.id,
+                "name": layout.name,
+                "fallback_locale": layout.fallback_locale,
+                "versions": [
+                    {
+                        "id": row.id,
+                        "number": row.number,
+                        "locale": row.locale,
+                        "branch": row.name,
+                    }
+                    for row in versions
+                ],
+            }
+        )
+    targets = []
+    for project in letter.projects:
+        envs: list[Environment | None] = list(
+            await db.scalars(
+                select(Environment)
+                .where(Environment.project_id == project.id)
+                .order_by(Environment.name, Environment.id)
+            )
+        )
+        if not envs:
+            envs.append(None)
+        for env in envs:
+            targets.append(
+                {
+                    "project_id": project.id,
+                    "environment_id": env.id if env else None,
+                    "label": f"{project.name} / {env.name}" if env else project.name,
+                }
+            )
+    return {"layouts": layouts, "targets": targets}

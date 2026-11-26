@@ -112,7 +112,10 @@ async def authenticate(
             raise ApplicationError(401, "MFA enrollment required")
     # Reloaded on every call: membership removal, demotion and revocation take effect
     # without terminating an MCP connection. Never elevate the account's live role.
-    return Author(Principal(account, ""), item)
+    return Author(
+        Principal(account, "", frozenset(UUID(value) for value in item.project_ids)),
+        item,
+    )
 
 
 async def template_access(

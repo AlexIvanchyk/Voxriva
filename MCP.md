@@ -120,7 +120,7 @@ connect them through the dashboard before authoring them through MCP.
 
 | Tool | Purpose |
 | --- | --- |
-| `list_templates` | Paginated metadata, project filter, name/key search |
+| `list_templates` | Paginated metadata, project and layout filters, name/key search |
 | `get_template` | Full saved draft, exact branch ID, locale and revision |
 | `list_branches` | All languages/branches, revisions, published heads and lineage |
 | `list_versions`, `get_version`, `diff_versions` | Immutable history and contract comparison |
@@ -130,6 +130,22 @@ connect them through the dashboard before authoring them through MCP.
 | `preview` | Validate/render saved draft, unsaved proposal or immutable version |
 | `plan_changes` | Side-effect-free unified diffs and previews for draft replacements |
 | `apply_changes` | Explicitly save the reviewed replacements with revision checks |
+
+For email layouts, call `list_templates` with `is_layout: true` and a
+`project_id` to find layouts connected to that project. Use `is_layout: false`
+for message templates or omit it for both. Create a layout using
+`create_template` with `channel: "email"` and `is_layout: true`. The credential
+must cover the selected projects and the account's current roles apply.
+Attaching an existing layout requires visibility in the credential scope and
+a project connection for the target.
+
+In an email template, set `draft.layout` to `{"template_id": "<layout-id>"}`
+to follow the active deployment or include a published `version_id` from
+`list_versions` to pin it. Set `draft.layout` to null to detach. Supply
+`project_id` and `environment_id` in the `preview` payload or on the change
+item in `plan_changes` and `apply_changes`. The target in a change item is
+covered by the plan hash. The preview response identifies the resolved layout
+version. Publish and deploy both layouts and letters from the dashboard.
 
 For example, changing a logo across languages:
 

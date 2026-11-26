@@ -49,6 +49,12 @@ class DraftChange(BaseModel):
     branch_id: UUID
     expected_revision: int = Field(ge=1)
     draft: DraftContent
+    project_id: UUID | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
+    environment_id: UUID | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
 
 class ChangeSet(BaseModel):

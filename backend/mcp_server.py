@@ -100,7 +100,7 @@ class BearerGate:
 def create_server(authoring: Authoring, stdio_token: str = "") -> MCPServer:
     server = RedactedServer(
         "Voxriva template authoring",
-        version="0.1.1",
+        version="0.2.0",
         log_level="ERROR",
         instructions=(
             "Work with synthetic template data only. Read exact branch IDs and revisions first. "
@@ -129,14 +129,20 @@ def create_server(authoring: Authoring, stdio_token: str = "") -> MCPServer:
         query: str = "",
         offset: int = 0,
         limit: int = 50,
+        is_layout: bool | None = None,
     ) -> dict[str, Any]:
-        """Search visible template metadata by name/key, paginated; content requires get_template."""
+        """Search visible templates by name/key. Filter layouts with is_layout=true.
+
+        Use project_id when looking for layouts connected to a specific project.
+        Omit is_layout to include both layouts and message templates. Use get_template for content.
+        """
         return await call(
             "list_templates",
             project_id=project_id,
             query=query,
             offset=offset,
             limit=limit,
+            is_layout=is_layout,
         )
 
     @server.tool(annotations=read)
@@ -172,7 +178,13 @@ def create_server(authoring: Authoring, stdio_token: str = "") -> MCPServer:
 
     @server.tool(annotations=write)
     async def create_template(payload: TemplateInput) -> dict[str, Any]:
-        """Explicitly create a template connected to credential-scoped projects. Does not publish."""
+        """Create a draft in credential-scoped projects.
+
+        For email layouts, set is_layout=true and use exactly one <!-- voxriva:body -->
+        slot in each authored HTML or text format. For an email template, draft.layout
+        accepts template_id and an optional published version_id. Omit version_id to
+        follow the active layout in the target. Publish drafts from the dashboard.
+        """
         return await call("create_template", payload=payload)
 
     @server.tool(annotations=write)
@@ -191,6 +203,8 @@ def create_server(authoring: Authoring, stdio_token: str = "") -> MCPServer:
     ) -> dict[str, Any]:
         """Validate and sandbox-render saved or unsaved content. No persistence or resource fetch.
 
+        Set payload.project_id and payload.environment_id to preview the active layout in a target.
+        The result identifies the resolved layout version when a layout is used.
         Fixtures/scenarios are synthetic preview data; runtime_defaults remain separate.
         Rendered HTML is untrusted: display only in a scriptless iframe with network blocked.
         """
@@ -202,6 +216,9 @@ def create_server(authoring: Authoring, stdio_token: str = "") -> MCPServer:
     async def plan_changes(changes: ChangeSet) -> dict[str, Any]:
         """Side-effect-free unified diffs + validation/preview for 1–20 exact draft replacements.
 
+        Change draft.layout to attach or pin a layout, or set it to null to detach it.
+        List layout versions with list_versions. Set the item's project_id and environment_id
+        to preview the selected target. The target is included in the plan_hash.
         Return plan_hash to bind a later explicit apply to identical changes. Show all items
         to the user before approval. This call saves nothing, including the proposed plan.
         """

@@ -170,7 +170,7 @@ check before promotion:
 
 ```sh
 bash scripts/test-production-compose.sh
-bash scripts/build-release.sh 0.1.1 SOURCE_REVISION_OR_ARCHIVE_SHA256
+bash scripts/build-release.sh 0.2.0 SOURCE_REVISION_OR_ARCHIVE_SHA256
 ```
 
 The builder creates a version/revision-labelled non-root image archive, bundled

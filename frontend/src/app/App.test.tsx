@@ -13,7 +13,7 @@ const tenantSession = {
   csrf_token: "tenant-csrf",
 };
 const timestamp = "2026-11-24T12:00:00Z";
-const info = { name: "Voxriva", version: "0.1.1" };
+const info = { name: "Voxriva", version: "0.2.0" };
 const report: SystemStatus = {
   info,
   readiness: { status: "ready", checks: { api: "ready", postgres: "ready", redis: "ready" } },
@@ -49,7 +49,7 @@ function open(path: string, result: SystemStatus = report, session = platformSes
 
 it("renders the version and live readiness in Overview", async () => {
   open("/");
-  expect(await screen.findByText("API version 0.1.1")).toBeInTheDocument();
+  expect(await screen.findByText("API version 0.2.0")).toBeInTheDocument();
   expect(screen.getByText("Connected")).toBeInTheDocument();
   expect(await screen.findAllByText("Ready")).toHaveLength(3);
   expect(screen.getByRole("link", { name: /System Health/ })).toHaveAttribute("href", "/system/health");

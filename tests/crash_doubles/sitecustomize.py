@@ -21,7 +21,7 @@ if (
     from backend.app.features.providers.adapters.smtp import SMTPProvider
 
     state = Path("/crash-state")
-    original_render = delivery.render_message
+    original_render = delivery.render_version
     original_send = SMTPProvider.send
 
     def enter(phase, **details):
@@ -47,8 +47,8 @@ if (
                 raise TimeoutError(f"Crash E2E did not release {phase}")
             await asyncio.sleep(0.05)
 
-    async def controlled_render(channel, draft, context, **kwargs):
-        result = await original_render(channel, draft, context, **kwargs)
+    async def controlled_render(channel, draft, layout, context):
+        result = await original_render(channel, draft, layout, context)
         if (
             context.get("marker") == "before-send"
             and result.rendered
@@ -72,5 +72,5 @@ if (
                 pause.wait(0.05)
         return result
 
-    delivery.render_message = controlled_render
+    delivery.render_version = controlled_render
     SMTPProvider.send = controlled_send

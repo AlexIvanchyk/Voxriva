@@ -112,5 +112,5 @@ Review every batch result; partial saves and revision conflicts are possible.
 Then open the dashboard to inspect, publish and deploy the saved content.
 
 See the [complete MCP tools and workflow](../../MCP.md#tools-and-editing-workflow)
-for payloads, concurrency, limits and rendering boundaries. An authoring preview
+for layout discovery, scoped previews, payloads, concurrency and limits. An authoring preview
 does not send a notification; runtime sending uses the [Delivery API](../api.md).

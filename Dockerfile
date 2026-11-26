@@ -21,7 +21,7 @@ COPY sdk/python/ ./
 RUN pip wheel --no-deps --wheel-dir /dist .
 
 FROM ${PYTHON_IMAGE} AS runtime
-ARG VERSION=0.1.1
+ARG VERSION=0.2.0
 ARG REVISION=unknown
 LABEL org.opencontainers.image.title="Voxriva" org.opencontainers.image.version=$VERSION org.opencontainers.image.revision=$REVISION io.voxriva.own-code.license="MIT" io.voxriva.third-party-notices="/app/release-metadata/third-party"
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 VOXRIVA_VERSION=$VERSION
@@ -49,7 +49,7 @@ COPY alembic.ini ./
 COPY migrations/ migrations/
 COPY --from=frontend /build/dist/ frontend/dist/
 COPY --from=frontend-notices /third-party/frontend/ /app/release-metadata/third-party/frontend/
-COPY --from=sdk /dist/voxriva_sdk-0.1.1-py3-none-any.whl frontend/dist/downloads/
+COPY --from=sdk /dist/voxriva_sdk-0.2.0-py3-none-any.whl frontend/dist/downloads/
 COPY contracts/delivery-v1.openapi.json frontend/dist/downloads/
 USER 10001
 EXPOSE 8000

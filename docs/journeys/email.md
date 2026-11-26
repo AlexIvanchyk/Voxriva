@@ -44,6 +44,27 @@ body representation. Maintain HTML and plain text when clients require both.
 Push has title/body and string-valued data, with its own full transport budget.
 The server does not fetch URLs contained in context or templates.
 
+## Email layout composition
+
+A published layout wraps the corresponding HTML or plain-text body using the
+structural body slot. A format the layout omits uses the template's own content
+directly. Layouts can publish without a subject and cannot reference another
+layout. The letter supplies the delivery subject.
+
+For a composed letter, declare named properties on a Draft 2020-12 object
+root. The layout and letter contribute their properties, required fields,
+runtime defaults and saved images to one contract. Names shared across the two
+sources are rejected. Unknown context fields are rejected when either source
+sets `additionalProperties: false`. Composition supports boolean
+`additionalProperties` and rejects advanced root constraints such as
+`oneOf` and `patternProperties`. Constraints on named properties still apply.
+The body slot is structural and takes no context value.
+
+Delivery uses the combined defaults and a single request context. During
+preview, the template's fixture, selected scenario or supplied preview context
+can override the layout fixture. For editor steps, see
+[Author email layouts](../workspace-guide.md#author-email-layouts).
+
 ## Defaults and fixtures have different semantics
 
 The effective runtime context is a shallow merge:

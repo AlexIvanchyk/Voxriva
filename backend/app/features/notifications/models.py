@@ -34,6 +34,9 @@ class Notification(Base):
     template_version_id: Mapped[UUID] = mapped_column(
         ForeignKey("template_versions.id", ondelete="RESTRICT")
     )
+    layout_version_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("template_versions.id", ondelete="RESTRICT")
+    )
     provider_revision_id: Mapped[UUID] = mapped_column(
         ForeignKey("provider_revisions.id", ondelete="RESTRICT")
     )

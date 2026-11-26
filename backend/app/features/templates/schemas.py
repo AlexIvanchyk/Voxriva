@@ -30,6 +30,7 @@ class ProjectBindings(BaseModel):
 class TemplateInput(NamedInput, ProjectBindings):
     model_config = ConfigDict(extra="forbid")
     key: Annotated[str, StringConstraints(pattern="^[a-z][a-z0-9_-]{0,99}$")]
+    is_layout: bool = False
     channel: Literal["email", "push"]
     draft: DraftContent = Field(default_factory=DraftContent)
     locale: Locale = "en"
@@ -38,6 +39,7 @@ class TemplateInput(NamedInput, ProjectBindings):
 class TemplateView(NamedInput):
     id: UUID
     key: str
+    is_layout: bool
     channel: str
     draft: DraftContent
     draft_revision: int
@@ -62,6 +64,8 @@ class DraftUpdate(BaseModel):
 
 
 class PreviewInput(BaseModel):
+    project_id: UUID | None = None
+    environment_id: UUID | None = None
     generate_example: bool = False
     draft: DraftContent | None = None
     context: dict[str, JsonValue] | None = None

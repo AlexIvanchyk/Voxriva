@@ -6,8 +6,16 @@ import asyncio
 import json
 import sys
 from typing import Any
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    JsonValue,
+    field_serializer,
+    model_validator,
+)
 
 from backend.app.features.templates.images import ImageContent
 
@@ -25,9 +33,20 @@ def empty_schema() -> dict[str, JsonValue]:
     }
 
 
+class LayoutReference(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    template_id: UUID
+    version_id: UUID | None = None
+
+    @field_serializer("template_id", "version_id")
+    def serialize_id(self, value: UUID | None) -> str | None:
+        return str(value) if value else None
+
+
 class DraftContent(BaseModel):
     model_config = ConfigDict(extra="forbid")
     contract_version: int = Field(default=1, ge=1, le=1)
+    layout: LayoutReference | None = None
     subject: str = Field(default="", max_length=20000)
     text: str = Field(default="", max_length=30000)
     html: str = Field(default="", max_length=30000)
@@ -54,11 +73,12 @@ class DraftContent(BaseModel):
             if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,79}", name):
                 raise ValueError("Invalid image name")
             ImageContent.model_validate(value)
-        bounded_images(self.model_dump())
+        stored = self.model_dump(exclude_none=True)
+        bounded_images(stored)
         if (
             len(
                 json.dumps(
-                    without_image_bytes(self.model_dump()),
+                    without_image_bytes(stored),
                     ensure_ascii=False,
                     separators=(",", ":"),
                 ).encode()
@@ -84,6 +104,7 @@ class RenderIssue(BaseModel):
 class RenderResult(BaseModel):
     rendered: dict[str, Any] | None = None
     errors: list[RenderIssue] = Field(default_factory=list)
+    layout: dict[str, Any] | None = None
     diagnostics: list[dict[str, Any]] = Field(default_factory=list)
 
 
@@ -96,7 +117,10 @@ def failure(
 
 
 def _render(
-    channel: str, draft: DraftContent, context: dict[str, JsonValue]
+    channel: str,
+    draft: DraftContent,
+    context: dict[str, JsonValue],
+    wrappers: dict[str, list[str]] | None = None,
 ) -> RenderResult:
     from jinja2 import StrictUndefined, TemplateError
     from jinja2.sandbox import ImmutableSandboxedEnvironment
@@ -236,9 +260,10 @@ def _render(
     }
     total = 0
 
-    def render(source: str, html: bool = False) -> str:
+    def render(source: str, html: bool = False, keep_newline: bool = False) -> str:
         nonlocal total
         env.autoescape = html
+        env.keep_trailing_newline = keep_newline
         chunks = []
         for chunk in env.from_string(source).generate(effective):
             total += len(chunk.encode())
@@ -247,12 +272,22 @@ def _render(
             chunks.append(chunk)
         return "".join(chunks)
 
+    def render_body(field: str) -> str:
+        source = getattr(draft, field)
+        fragments = (wrappers or {}).get(field)
+        if fragments is None:
+            return render(source, field == "html")
+        return "".join(
+            render(part, field == "html", keep_newline=True)
+            for part in (fragments[0], source, fragments[1])
+        )
+
     try:
         if channel == "email":
             result: dict[str, Any] = {
                 "subject": render(draft.subject),
-                "text": render(draft.text),
-                "html": render(draft.html, True),
+                "text": render_body("text"),
+                "html": render_body("html"),
             }
         else:
             result = {
@@ -295,6 +330,7 @@ async def render_message(
     draft: DraftContent,
     context: dict[str, JsonValue],
     *,
+    wrappers: dict[str, list[str]] | None = None,
     authoring: bool = False,
     generate_example: bool = False,
 ) -> RenderResult:
@@ -304,6 +340,7 @@ async def render_message(
             "channel": channel,
             "draft": draft.model_dump(),
             "context": context,
+            "wrappers": wrappers,
             "authoring": authoring,
             "generate_example": generate_example,
         },
@@ -380,7 +417,10 @@ def worker() -> None:
     if payload.get("authoring"):
         from backend.app.features.templates.authoring import diagnostics
 
-        notes = diagnostics(payload["channel"], payload["draft"])
+        sources = dict(payload["draft"])
+        for field, parts in (payload.get("wrappers") or {}).items():
+            sources[field] = "\n".join([parts[0], sources[field], parts[1]])
+        notes = diagnostics(payload["channel"], sources)
     errors = [
         RenderIssue(
             path=note.get("path", [note["field"], note["line"]]),
@@ -397,6 +437,7 @@ def worker() -> None:
             payload["channel"],
             DraftContent.model_validate(payload["draft"]),
             payload["context"],
+            payload.get("wrappers"),
         )
     )
     result.diagnostics = notes

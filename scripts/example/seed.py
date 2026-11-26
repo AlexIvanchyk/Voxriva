@@ -12,7 +12,7 @@ from email.parser import BytesParser
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "demo"))
-from fixtures import email_draft  # noqa: E402
+from fixtures import email_draft, layout_demo  # noqa: E402
 
 FIXTURE = json.loads(Path(__file__).with_name("fixture.json").read_text())
 
@@ -56,6 +56,70 @@ class API:
             ) from None
 
 
+def prepare_layout(api, named, pid):
+    letter, day, evening = layout_demo()
+    layout = named(
+        "/templates",
+        "northstar-brand",
+        {
+            "name": "Northstar brand layout",
+            "key": "northstar-brand",
+            "channel": "email",
+            "is_layout": True,
+            "project_ids": [pid],
+            "draft": day,
+        },
+        field="key",
+    )
+    if not layout.get("is_layout") or [p["id"] for p in layout["projects"]] != [pid]:
+        raise ExampleError("The Northstar layout key is already in use.")
+    base = f"/templates/{layout['id']}"
+    versions = api.call("GET", base + "/versions")
+    for number, (draft, message) in enumerate(
+        ((day, "Market daylight"), (evening, "Evening edition")), 1
+    ):
+        if any(v["number"] == number and v["message"] == message for v in versions):
+            continue
+        if number == 2 and layout["draft_revision"] == 1:
+            layout = api.call(
+                "PUT", base + "/draft", {"expected_revision": 1, "draft": draft}
+            )
+        if layout["draft_revision"] != number or any(
+            layout["draft"].get(k) != v for k, v in draft.items()
+        ):
+            raise ExampleError("The layout draft changed. Your edits were preserved.")
+        versions.append(
+            api.call(
+                "POST",
+                base + "/publish",
+                {
+                    "branch_id": layout["branch_id"],
+                    "expected_revision": number,
+                    "message": message,
+                },
+            )
+        )
+    target = next(
+        row
+        for row in api.call("GET", base + "/deployments")["rows"]
+        if row["scope"] == "project" and row["project_id"] == pid
+    )
+    if not target["version"] and target["generation"] == 0:
+        day_version = next(v for v in versions if v["number"] == 1)
+        api.call(
+            "POST",
+            base + "/deployments/deploy",
+            {
+                "scope": "project",
+                "project_id": pid,
+                "expected_generation": 0,
+                "version_id": day_version["id"],
+            },
+        )
+    letter["layout"] = {"template_id": layout["id"], "version_id": None}
+    return letter
+
+
 def prepare(api, state, save):
     """Resume incomplete setup without replacing any saved draft or active binding."""
 
@@ -75,7 +139,11 @@ def prepare(api, state, save):
     eid = environment["id"]
     state.update(project_id=pid, environment_id=eid)
     save()
-    draft = email_draft(FIXTURE["locale"])
+    draft = (
+        prepare_layout(api, named, pid)
+        if state.get("layout_preview")
+        else email_draft(FIXTURE["locale"])
+    )
     template = named(
         "/templates",
         FIXTURE["template_key"],

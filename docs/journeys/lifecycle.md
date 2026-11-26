@@ -48,6 +48,23 @@ The resolved template version and provider revision are pinned before acceptance
 An idempotency repeat returns its original pinned notification before re-resolving
 current deployments.
 
+## Layout resolution
+
+A layout has its own languages, branches, publications and deployment pointers.
+For an email template that follows the active layout, resolution starts in the
+same project and environment using the resolved letter version's locale. The
+layout then uses its own fallback chain. A pinned reference selects that
+specific published layout version. The layout must be connected to the sending
+project in both modes.
+
+Rolling out or rolling back an active layout changes subsequent acceptance for
+templates that follow it, without publishing new template versions. Voxriva
+blocks layout changes that would break the effective variable contract of an
+active dependent letter. Pinned references keep their selected version.
+Acceptance records both version IDs. Queued deliveries and automatic retries
+keep that pair even if a deployment changes. An explicit replay can opt into
+resolving current deployments.
+
 ## Optimistic mutations
 
 | Operation | Guard / result |

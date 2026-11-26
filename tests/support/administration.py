@@ -84,6 +84,7 @@ def store(tmp_path):
             "0011_notification_recipients",
             "0012_management_credentials",
             "0013_account_mfa",
+            "0014_email_layouts",
         ]:
             import_module(f"migrations.versions.{revision}").upgrade()
 
