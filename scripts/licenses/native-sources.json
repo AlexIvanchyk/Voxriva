@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "Pillow13.0.0 CPython3.13 manylinux x86_64 native source supplements. Vendored shim/raqm source is already in the Pillow sdist; no FriBiDi or libimagequant implementation is shipped in that wheel.",
+  "scope": "Pillow13.0.0 CPython3.13 manylinux x86_64 and aarch64 native source supplements; both official wheels have matching codec component versions and native library names. Vendored shim/raqm source is already in the Pillow sdist; no FriBiDi or libimagequant implementation is shipped in that wheel.",
   "pillow_dependency_recipe": "https://github.com/python-pillow/Pillow/blob/13.0.0/.github/dependencies.json",
   "components": [
     {
