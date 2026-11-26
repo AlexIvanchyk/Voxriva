@@ -1,10 +1,20 @@
 # Changelog
 
 User-visible changes, compatibility breaks, migration requirements and deprecations
-are recorded here. The current 0.1.0 source is a prerelease; this file does not
-announce a published package or production release.
+are recorded here. Releases remain prereleases; see
+[release status](docs/release-status.md) for actual artifact availability.
 
 ## Unreleased
+
+## 0.1.1 — container and SDK distribution
+
+- Versioned linux/amd64 application and MCP images, promoted from the exact tested candidate.
+- An operator download that starts the local email example without a checkout or build.
+- Python SDK wheel and sdist, clean installation checks on Python 3.10/3.13 and OIDC publishing through TestPyPI to PyPI.
+- Retained dependency notices/source inventories in both images; jsonschema uses its supported `format-nongpl` extra for URI/IRI validation.
+
+No database migrations or Delivery v1 contract changes. See
+[release notes](docs/releases/0.1.1.md).
 
 ## 0.1.0 — source prerelease
 

@@ -29,7 +29,7 @@ from .models import (
     ValidationResult,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __all__ = [
     "image_from_bytes",
     "Accepted", "ApiError", "AsyncClient", "Attempt", "AuthenticationError", "Channel", "Client", "ConflictError",

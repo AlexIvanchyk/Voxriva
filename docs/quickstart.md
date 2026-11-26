@@ -7,20 +7,24 @@ and a local Mailpit inbox, so no cloud account or dashboard setup is needed.
 ## Requirements
 
 Have Docker Engine with Compose v2 running and host Python 3.10+ on macOS/Linux.
-No host Node.js or installed Python packages are needed. The first source build
-downloads images/packages and can take several minutes.
+No host Node.js or installed Python packages are needed. Published container
+images target **linux/amd64**. A native ARM64 image is not published.
 
-## Get the source and start { #start-locally }
+## Download and start { #start-locally }
 
-For a new checkout:
+Download the operator bundle, verify its checksum, then run the launcher. No
+source checkout or image build is needed:
 
 ```sh
-git clone https://github.com/AlexIvanchyk/Voxriva.git
-cd Voxriva
+curl -fLO https://github.com/AlexIvanchyk/Voxriva/releases/download/v0.1.1/Voxriva-0.1.1-operator.tar.gz
+curl -fLO https://github.com/AlexIvanchyk/Voxriva/releases/download/v0.1.1/OPERATOR-SHA256SUMS
+shasum -a 256 -c OPERATOR-SHA256SUMS
+tar -xzf Voxriva-0.1.1-operator.tar.gz
+cd Voxriva-0.1.1
 python3 scripts/example.py
 ```
 
-If you already have the source, run from its repository root:
+For development from a source checkout, the same launcher builds locally:
 
 ```sh
 python3 scripts/example.py

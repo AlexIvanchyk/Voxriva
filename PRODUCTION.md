@@ -16,7 +16,10 @@ live dependency checks and Operations shows worker/application health; container
 monitoring is explicitly disabled. The existing isolated Docker collector remains
 available in the local demo stack.
 
-1. Obtain/build a reviewed image and verify the artifact checksums:
+1. Download the reviewed operator bundle from the GitHub release and verify its
+   `OPERATOR-SHA256SUMS` before extraction. The configured public image is
+   `ghcr.io/alexivanchyk/voxriva:0.1.1` (linux/amd64). For an offline image archive,
+   verify the artifact checksums:
    `shasum -a 256 -c SHA256SUMS`. A `RELEASE-BLOCKED` file means the
    candidate failed a required scan and must not be promoted. For a locally built archive run
    `docker load -i voxriva-image.tar`. Archives are for the builder's platform;
@@ -167,7 +170,7 @@ check before promotion:
 
 ```sh
 bash scripts/test-production-compose.sh
-bash scripts/build-release.sh 0.1.0 SOURCE_REVISION_OR_ARCHIVE_SHA256
+bash scripts/build-release.sh 0.1.1 SOURCE_REVISION_OR_ARCHIVE_SHA256
 ```
 
 The builder creates a version/revision-labelled non-root image archive, bundled

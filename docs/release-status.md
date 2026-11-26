@@ -1,18 +1,20 @@
 # Release status and compatibility
 
-The current application, frontend and Python SDK metadata are **0.1.0**. Treat
-this source as a prerelease while published artifacts, platform commitments and
-dependency redistribution are being prepared. No production support SLA or
-benchmark-based capacity guarantee is published.
+Application, frontend and Python SDK metadata are **0.1.1**. This is a
+prerelease. Container/SDK publication is being verified; the existing
+[source prerelease 0.1.0](https://github.com/AlexIvanchyk/Voxriva/releases/tag/v0.1.0)
+remains available. No production support SLA or measured capacity guarantee is published.
 
 ## Where to get it
 
-| Component | Current route |
+| Component | Distribution |
 | --- | --- |
-| Source | [AlexIvanchyk/Voxriva on GitHub](https://github.com/AlexIvanchyk/Voxriva); [quickstart](quickstart.md) builds from the checkout |
-| Application and optional MCP images | Build locally using the supplied tooling; GHCR is the selected future registry, with package namespaces pending |
-| Python delivery SDK | Install the wheel bundled with the running application or `python -m pip install ./sdk/python` from the application directory; no PyPI publication is claimed |
-| Documentation | [Public documentation](https://alexivanchyk.github.io/Voxriva/) and [local MkDocs preview](contributing/documentation.md) |
+| Source | [AlexIvanchyk/Voxriva on GitHub](https://github.com/AlexIvanchyk/Voxriva) |
+| Application | `ghcr.io/alexivanchyk/voxriva:0.1.1` — candidate, publication pending |
+| MCP | `ghcr.io/alexivanchyk/voxriva-mcp:0.1.1` — candidate, publication pending |
+| Operator download | `Voxriva-0.1.1-operator.tar.gz` — publication pending; [quickstart](quickstart.md) |
+| Python delivery SDK | `voxriva-sdk==0.1.1` — TestPyPI/PyPI publication pending; a matching wheel is bundled with the application |
+| Documentation | [Public documentation](https://alexivanchyk.github.io/Voxriva/) |
 
 Runtime installation needs no maintainer-hosted control plane, telemetry account
 or license-key activation. Cloud transports require your own provider accounts;
@@ -30,18 +32,20 @@ licenses in its [official license table](https://redis.io/legal/licenses/).
 The MIT application license does not make that default stack wholly OSI-licensed.
 A different broker needs compatibility tests before being offered as an alternative.
 
-The current runtime also includes `rfc3987` 1.3.8 under GPL-3.0-or-later. GPL is
-an open-source license; its inclusion raises redistribution obligations separate
-from the application's MIT declaration. Review the exact artifact, upstream
-licenses, notices and any corresponding-source requirements before distributing
-images. [Third-party notices](../THIRD_PARTY_NOTICES.md) tracks the open review.
+The runtime uses jsonschema's supported `format-nongpl` extra with
+`rfc3986-validator`, `rfc3987-syntax` and Lark for URI/IRI validation; `rfc3987`
+is not part of the 0.1.1 runtime lock. Exact installed dependency notices, source
+archives, upstream URLs/checksums and available native SBOMs are retained under
+`/app/release-metadata/third-party` in each image and in candidate artifacts.
+See [third-party notices](../THIRD_PARTY_NOTICES.md) for scope and upstream terms.
+These materials document the distributed components; they are not a blanket legal opinion.
 
 ## Platform and operating scope
 
 | Area | Current scope |
 | --- | --- |
 | CI target | Ubuntu 24.04 x86-64, Python 3.13, Node.js 22 and pinned Chromium |
-| Local example launcher | Host Python 3.10+ on macOS/Linux, Docker Engine and Compose v2; source builds may take minutes |
+| Local example launcher | Host Python 3.10+ on macOS/Linux, Docker Engine and Compose v2; downloaded images target linux/amd64 |
 | Native development | Python 3.12+ and Node.js 22+; separately configured PostgreSQL/Redis |
 | Delivery SDK | Python 3.10+ and HTTPX; sync and async clients |
 | Production tooling | One Linux Docker host, Engine 28+, Compose v2, PostgreSQL 17, Redis and operator-supplied TLS; data tools need Python 3.11+ |
@@ -65,16 +69,13 @@ Keep API, MCP, relay and worker code/migrations aligned; the bundled SDK version
 must match release metadata. Back up the database and complete keyring before
 upgrading and follow the [upgrade/restore runbook](../PRODUCTION.md).
 
-## Before the first public artifact release
+## Verification
 
-- Set the application/MCP image namespaces and SDK distribution location.
-- Complete the artifact-specific dependency and redistribution review, including
-  Redis and `rfc3987`; publish required notices and source materials.
-- Define and verify supported production platforms and capacity guidance.
-- Build and test the exact candidate images and retain their checksums/evidence.
-- Confirm GitHub issue reporting and private vulnerability reporting are available.
-- Assign the documentation URL and configure the existing Pages workflow before
-  publishing its static output.
+Release candidates require full source checks, exact-image runtime tests,
+HIGH/CRITICAL application dependency scans, dependency inventories and checksums.
+A separate public-consumer run checks anonymous pulls, startup from the operator
+download and an SDK installed from PyPI sending sync/async SMTP mail. Publication
+and that final consumer check remain pending until their actual results are linked here.
 
 Kubernetes/Helm, a provisioned HA topology, campaigns, subscriber management,
 business scheduling and MCP OAuth onboarding are outside the current scope.

@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "scope": "Pillow13.0.0 CPython3.13 manylinux x86_64 native source supplements. Vendored shim/raqm source is already in the Pillow sdist; no FriBiDi or libimagequant implementation is shipped in that wheel.",
+  "pillow_dependency_recipe": "https://github.com/python-pillow/Pillow/blob/13.0.0/.github/dependencies.json",
+  "components": [
+    {
+      "owner": "pillow",
+      "owner_version": "13.0.0",
+      "name": "brotli",
+      "version": "1.2.0",
+      "url": "https://raw.githubusercontent.com/python-pillow/pillow-depends/70c5bf5e940f5f1aee75ddb0421f0abfd9581261/brotli-1.2.0.tar.gz",
+      "sha256": "816c96e8e8f193b40151dad7e8ff37b1221d019dbcb9c35cd3fadbfe6477dfec",
+      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+    },
+    {
+      "owner": "pillow",
+      "owner_version": "13.0.0",
+      "name": "dav1d",
+      "version": "1.5.3",
+      "url": "https://downloads.videolan.org/pub/videolan/dav1d/1.5.3/dav1d-1.5.3.tar.xz",
+      "sha256": "732010aa5ef461fa93355ed2c6c5fedb48ddc4b74e697eaabe8907eaeb943011",
+      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+    },
+    {
+      "owner": "pillow",
+      "owner_version": "13.0.0",
+      "name": "freetype",
+      "version": "2.14.3",
+      "url": "https://raw.githubusercontent.com/python-pillow/pillow-depends/70c5bf5e940f5f1aee75ddb0421f0abfd9581261/freetype-2.14.3.tar.gz",
+      "sha256": "e61b31ab26358b946e767ed7eb7f4bb2e507da1cfefeb7a8861ace7fd5c899a1",
+      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+    },
+    {
+      "owner": "pillow",
+      "owner_version": "13.0.0",
+      "name": "harfbuzz",
+      "version": "14.5.0",
+      "url": "https://raw.githubusercontent.com/python-pillow/pillow-depends/70c5bf5e940f5f1aee75ddb0421f0abfd9581261/harfbuzz-14.5.0.tar.xz",
+      "sha256": "b7132e148358a45185c9feafd049dbaf243649d3c44414b3534d9c95d18592b9",
+      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+    },
+    {
+      "owner": "pillow",
+      "owner_version": "13.0.0",
+      "name": "lcms2",
+      "version": "2.19.1",
+      "url": "https://raw.githubusercontent.com/python-pillow/pillow-depends/70c5bf5e940f5f1aee75ddb0421f0abfd9581261/lcms2-2.19.1.tar.gz",
+      "sha256": "bfc54f7bab59fbc921012014a8032e4cba4abd46db47d46b76416a8c0b2815c8",
+      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+    },
+    {
+      "owner": "pillow",
+      "owner_version": "13.0.0",
+      "name": "libXau",
+      "version": "1.0.9",
+      "url": "https://www.x.org/releases/individual/lib/libXau-1.0.9.tar.bz2",
+      "sha256": "ccf8cbf0dbf676faa2ea0a6d64bcc3b6746064722b606c8c52917ed00dcb73ec",
+      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+    },
+    {
+      "owner": "pillow",
+      "owner_version": "13.0.0",
+      "name": "libaom",
+      "version": "3.14.1",
+      "url": "https://aomedia.googlesource.com/aom/+archive/refs/tags/v3.14.1.tar.gz",
+      "sha256": "f95c61aada7fb59d1897f9f48af821b7f15429e37b6f9aba1e70bdbf053ceb50",
+      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+    },
+    {
+      "owner": "pillow",
+      "owner_version": "13.0.0",
+      "name": "libavif",
+      "version": "1.4.2",
+      "url": "https://raw.githubusercontent.com/python-pillow/pillow-depends/70c5bf5e940f5f1aee75ddb0421f0abfd9581261/libavif-1.4.2.tar.gz",
+      "sha256": "2b645287340ba5a631d268b551dc2d72bd73ac33335962dd36dcdb6d8366921d",
+      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+    },
+    {
+      "owner": "pillow",
+      "owner_version": "13.0.0",
+      "name": "libjpeg-turbo",
+      "version": "3.2.0",
+      "url": "https://raw.githubusercontent.com/python-pillow/pillow-depends/70c5bf5e940f5f1aee75ddb0421f0abfd9581261/libjpeg-turbo-3.2.0.tar.gz",
+      "sha256": "6f30092cef9fb839779646608f4ee14ae3cbac989c47fa05e841b0841f09878e",
+      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+    },
+    {
+      "owner": "pillow",
+      "owner_version": "13.0.0",
+      "name": "libpng",
+      "version": "1.6.58",
+      "url": "https://raw.githubusercontent.com/python-pillow/pillow-depends/70c5bf5e940f5f1aee75ddb0421f0abfd9581261/libpng-1.6.58.tar.gz",
+      "sha256": "a9d4df463d36a6e5f9c29bd6f4967312d17e996c1854f3511f833924eb1993cf",
+      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+    },
+    {
+      "owner": "pillow",
+      "owner_version": "13.0.0",
+      "name": "libtiff",
+      "version": "4.7.2",
+      "url": "https://raw.githubusercontent.com/python-pillow/pillow-depends/70c5bf5e940f5f1aee75ddb0421f0abfd9581261/tiff-4.7.2.tar.gz",
+      "sha256": "672bd7d10aee4606171afb864f3570b83340f6a33e2c186dc0512f7145ffdf6a",
+      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+    },
+    {
+      "owner": "pillow",
+      "owner_version": "13.0.0",
+      "name": "libwebp",
+      "version": "1.6.0",
+      "url": "https://raw.githubusercontent.com/python-pillow/pillow-depends/70c5bf5e940f5f1aee75ddb0421f0abfd9581261/libwebp-1.6.0.tar.gz",
+      "sha256": "e4ab7009bf0629fd11982d4c2aa83964cf244cffba7347ecd39019a9e38c4564",
+      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+    },
+    {
+      "owner": "pillow",
+      "owner_version": "13.0.0",
+      "name": "libxcb",
+      "version": "1.17.0",
+      "url": "https://raw.githubusercontent.com/python-pillow/pillow-depends/70c5bf5e940f5f1aee75ddb0421f0abfd9581261/libxcb-1.17.0.tar.gz",
+      "sha256": "2c69287424c9e2128cb47ffe92171e10417041ec2963bceafb65cb3fcf8f0b85",
+      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+    },
+    {
+      "owner": "pillow",
+      "owner_version": "13.0.0",
+      "name": "openjpeg",
+      "version": "2.5.4",
+      "url": "https://raw.githubusercontent.com/python-pillow/pillow-depends/70c5bf5e940f5f1aee75ddb0421f0abfd9581261/openjpeg-2.5.4.tar.gz",
+      "sha256": "a695fbe19c0165f295a8531b1e4e855cd94d0875d2f88ec4b61080677e27188a",
+      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+    },
+    {
+      "owner": "pillow",
+      "owner_version": "13.0.0",
+      "name": "xz",
+      "version": "5.8.4",
+      "url": "https://raw.githubusercontent.com/python-pillow/pillow-depends/70c5bf5e940f5f1aee75ddb0421f0abfd9581261/xz-5.8.4.tar.gz",
+      "sha256": "0014c7886930454fe8bd4228665b51af55eeae560ea135c9c4cd33f55b2591d9",
+      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+    },
+    {
+      "owner": "pillow",
+      "owner_version": "13.0.0",
+      "name": "zlib-ng",
+      "version": "2.3.3",
+      "url": "https://raw.githubusercontent.com/python-pillow/pillow-depends/70c5bf5e940f5f1aee75ddb0421f0abfd9581261/2.3.3.tar.gz",
+      "sha256": "f9c65aa9c852eb8255b636fd9f07ce1c406f061ec19a2e7d508b318ca0c907d1",
+      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+    },
+    {
+      "owner": "pillow",
+      "owner_version": "13.0.0",
+      "name": "zstd",
+      "version": "1.5.7",
+      "url": "https://raw.githubusercontent.com/python-pillow/pillow-depends/70c5bf5e940f5f1aee75ddb0421f0abfd9581261/zstd-1.5.7.tar.gz",
+      "sha256": "eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3",
+      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+    }
+  ],
+  "unresolved": []
+}

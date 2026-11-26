@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Start an isolated, source-built Voxriva and receive one fictional local email.
+"""Start an isolated Voxriva and receive one fictional local email.
 
 Requires Python 3.10+, Docker Engine and Docker Compose v2 on macOS/Linux.
-No Python packages, cloud credentials or prebuilt Voxriva image are required.
+No host Python packages or cloud credentials are required.
+The operator download uses published images; a source checkout builds locally.
 """
 
 import argparse
@@ -132,7 +133,7 @@ def compose_environment(state):
         {
             "COMPOSE_PROJECT_NAME": state["project"],
             "VOXRIVA_EXAMPLE_OWNER": state["owner"],
-            "VOXRIVA_EXAMPLE_IMAGE": state["project"] + ":local",
+            "VOXRIVA_EXAMPLE_IMAGE": state.get("image") or state["project"] + ":local",
             "VOXRIVA_PORT": str(state["port"]),
             "VOXRIVA_MAILPIT_PORT": str(state["mailpit_port"]),
             "VOXRIVA_CONTAINER_MONITORING_ENABLED": "false",
@@ -240,6 +241,7 @@ def parser():
         type=int,
         help="first-run Mailpit web port (default: first free from 18025)",
     )
+    result.add_argument("--image", help="use this prebuilt application image instead of building")
     return result
 
 
@@ -317,6 +319,8 @@ def run(options, project, directory):
                 raise ExampleError(
                     "Ports are saved for this example. Use another --name for different ports."
                 )
+        if getattr(options, "image", None) and options.image != state.get("image"):
+            raise ExampleError("The image is saved for this example. Use another --name to change it.")
     else:
         port = choose_port(options.port, 18080)
         mailpit_port = choose_port(options.mailpit_port, 18025, excluded=[port])
@@ -331,6 +335,14 @@ def run(options, project, directory):
             "email": "admin@example.test",
             "password": secrets.token_urlsafe(32),
         }
+        distribution = ROOT / "distribution.json"
+        image = getattr(options, "image", None)
+        if image is None and distribution.exists():
+            image = json.loads(distribution.read_text())["application_image"]
+        if image:
+            if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._/@:+-]*", image):
+                raise ExampleError("Invalid prebuilt image reference.")
+            state["image"] = image
 
     def save():
         private_write(path, json.dumps(state, indent=2) + "\n")
@@ -340,11 +352,16 @@ def run(options, project, directory):
         directory / "access.txt",
         f"Local example administrator only\nApp: {state['base_url']}\nEmail: {state['email']}\nPassword: {state['password']}\n\nKeep private. Never use these credentials outside this disposable example.\n",
     )
-    print(
-        f"Building {project} from local source (first run may take several minutes)…",
-        flush=True,
-    )
-    compose(state, directory, "build", "api")
+    if state.get("image"):
+        if state["image"].startswith("sha256:"):
+            # The release runner checks the exact candidate ID without rebuilding it.
+            docker("image", "inspect", state["image"])
+        else:
+            print("Downloading the prebuilt application image…", flush=True)
+            compose(state, directory, "pull", "api", "migrate", "secrets-init", "relay", "email-worker", "push-worker")
+    else:
+        print(f"Building {project} from local source (first run may take several minutes)…", flush=True)
+        compose(state, directory, "build", "api")
     print(
         "Starting isolated services; waiting for migrations and worker health…",
         flush=True,
@@ -405,7 +422,7 @@ def run(options, project, directory):
     print(f"App:     {state['base_url']}/")
     print(f"Email:   {state['mailpit_url']}/view/{state['mailpit_id']}")
     print(f"API docs: {state['base_url']}/docs")
-    print(f"Guide:   {ROOT / 'docs/quickstart.md'}")
+    print("Guide:   https://alexivanchyk.github.io/Voxriva/quickstart/")
     print(f"Login:   protected local file {directory / 'access.txt'}")
     print(
         "Next: sign in, open Northstar → Templates, preview variables, then publish and deploy a change."

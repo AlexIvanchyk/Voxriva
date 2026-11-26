@@ -11,7 +11,7 @@ shutil.copytree(sys.argv[1], sys.argv[2], ignore=shutil.ignore_patterns('dist', 
 PY
 .venv/bin/python -m pip wheel --no-deps --no-build-isolation --wheel-dir "$PWD/sdk/python/dist" "$sdk_test_dir/source"
 python3 -m venv "$sdk_test_dir/venv"
-"$sdk_test_dir/venv/bin/python" -m pip install --disable-pip-version-check "$PWD/sdk/python/dist/voxriva_sdk-0.1.0-py3-none-any.whl"
+"$sdk_test_dir/venv/bin/python" -m pip install --disable-pip-version-check "$PWD/sdk/python/dist/voxriva_sdk-0.1.1-py3-none-any.whl"
 "$sdk_test_dir/venv/bin/python" -I - <<'PY'
 import importlib.metadata
 import importlib.util

@@ -43,10 +43,21 @@ VOXRIVA_RELEASE_IMAGE="$app_image" VOXRIVA_EXISTING_IMAGE_ID="$app_id" \
     VOXRIVA_EXISTING_BUILD_INPUTS="$output/build-inputs.env" VOXRIVA_APP_CHECKS_FILE="$output/application-checks.tmp" \
     VOXRIVA_OS_SCAN=0 bash scripts/build-release.sh "$version" "$revision" "$output/application"
 rm "$output/application-inspect.tmp" "$output/application-checks.tmp"
+python3 "$root/.github/scripts/release_metadata.py" notices --root "$output/application" --scope python --scope frontend
+python3 "$root/.github/scripts/operator_bundle.py" --root "$root" --version "$version" --revision "$revision" \
+    --output "$output/Voxriva-$version-operator.tar.gz"
+bash "$root/.github/scripts/test-operator-candidate.sh" "$output/Voxriva-$version-operator.tar.gz" "$app_id" "$mcp_id"
 
 mkdir "$output/mcp"
 docker image inspect "$mcp_id" > "$output/mcp/image-inspect.json"
 docker save "$mcp_image" -o "$output/mcp/voxriva-mcp-image.tar"
+# Extract the exact image's retained upstream material without running its code.
+mcp_container=$(docker create "$mcp_id")
+trap 'docker rm "$mcp_container" >/dev/null' EXIT
+docker cp "$mcp_container:/app/release-metadata/." "$output/mcp/"
+docker rm "$mcp_container" >/dev/null
+trap - EXIT
+python3 "$root/.github/scripts/release_metadata.py" notices --root "$output/mcp" --scope python
 python3 "$root/.github/scripts/release_metadata.py" bind --source "$CI_SOURCE_EVIDENCE" \
     --inspect "$output/mcp/image-inspect.json" --version "$version" --revision "$revision" \
     --runtime "$run_url: exact-image PostgreSQL HTTP/stdio MCP smoke passed" --output "$output/mcp/app-checks.json"
@@ -72,3 +83,4 @@ for notice in THIRD_PARTY_NOTICES.md THIRD-PARTY-NOTICES.md; do
     if [[ -f "$notice" ]]; then cp "$notice" "$output/"; fi
 done
 python3 "$root/.github/scripts/release_metadata.py" index --root "$output" --version "$version" --revision "$revision"
+python3 "$root/.github/scripts/release_metadata.py" verify --root "$output" --version "$version" --revision "$revision"

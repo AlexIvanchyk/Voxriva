@@ -25,13 +25,20 @@ data and provider credentials in your infrastructure.
 *Edit → preview → publish → deploy in the web dashboard. Email editing uses
 HTML/Jinja with a live preview.*
 
-## Run from this directory
+## Run locally
 
 Requirements: running Docker Engine with Compose v2 and host Python 3.10+ on
-macOS/Linux. A cold source build needs network downloads and can take minutes.
-No cloud account, host Node.js or installed Python packages are needed.
+macOS/Linux. Published images target **linux/amd64**; no source checkout, build,
+cloud account, host Node.js or installed Python packages are needed.
+
+Download the small operator bundle and verify its checksum:
 
 ```sh
+curl -fLO https://github.com/AlexIvanchyk/Voxriva/releases/download/v0.1.1/Voxriva-0.1.1-operator.tar.gz
+curl -fLO https://github.com/AlexIvanchyk/Voxriva/releases/download/v0.1.1/OPERATOR-SHA256SUMS
+shasum -a 256 -c OPERATOR-SHA256SUMS
+tar -xzf Voxriva-0.1.1-operator.tar.gz
+cd Voxriva-0.1.1
 python3 scripts/example.py
 ```
 
@@ -48,8 +55,8 @@ context. The environment Delivery key selects the project and environment. See
 ## License and release status
 
 Own code and documentation use [MIT](LICENSE). Dependencies retain their own
-terms; the default stack includes source-available Redis 7.4. The current 0.1.0
-source is a prerelease. Published artifacts, support scope and redistribution
+terms; the default stack includes source-available Redis 7.4. Version 0.1.1
+is a prerelease. Published artifacts, support scope and redistribution
 review are tracked in [release status](docs/release-status.md) and
 [third-party notices](THIRD_PARTY_NOTICES.md).
 
