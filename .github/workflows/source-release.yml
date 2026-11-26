@@ -6,7 +6,7 @@ on:
       version:
         description: 'Source version without v; must match application/frontend/SDK metadata'
         required: true
-        default: '0.2.0'
+        default: '0.1.0'
         type: string
       publish:
         description: 'Create a source-only GitHub prerelease from the matching vVERSION tag'
