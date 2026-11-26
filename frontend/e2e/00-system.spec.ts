@@ -6,7 +6,7 @@ setup();
 test("serves the dashboard and records the initial migration in persistent PostgreSQL", async ({ page, request }) => {
   const database = ["exec", "-T", "postgres", "psql", "-U", "voxriva", "-d", "voxriva", "-Atc"];
   await page.goto("/");
-  await expect(page.getByText("API version 0.1.1")).toBeVisible();
+  await expect(page.getByText("API version 0.2.0")).toBeVisible();
   await expect(page.getByText("Connected", { exact: true })).toBeVisible();
   await expect(page.getByText("Ready", { exact: true })).toHaveCount(3);
   expect(compose(...database, "SELECT version_num FROM alembic_version").trim()).toBe("0013_account_mfa");

@@ -21,7 +21,7 @@ public issues or pull requests. Ordinary non-sensitive bugs belong in
 
 ## Supported versions and response
 
-The current 0.1.1 source is a prerelease. No historical security maintenance
+The current 0.2.0 source is a prerelease. No historical security maintenance
 branches or response-time commitments have been announced. Include the exact
 revision/image and SDK version in a report; maintainers triage reports against
 current source and coordinate fixes and disclosure through GitHub.

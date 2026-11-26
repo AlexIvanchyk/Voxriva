@@ -61,7 +61,7 @@ uses this exact fixture without a UI setup prerequisite.
 
 ## Inspect Northstar email layouts
 
-Start a separate local example from the Voxriva directory:
+Check out the 0.2.0 source, then start a separate local example from the repository root:
 
 ```sh
 python3 scripts/example.py up --layout-preview --name northstar-layouts
