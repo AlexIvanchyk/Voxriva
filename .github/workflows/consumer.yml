@@ -19,12 +19,14 @@ jobs:
     env:
       RELEASE_VERSION: ${{ inputs.version }}
       DOCKER_DEFAULT_PLATFORM: linux/amd64
-      DOCKER_CONFIG: ${{ runner.temp }}/anonymous-docker
-      EVIDENCE: ${{ runner.temp }}/consumer-evidence
     steps:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.13'
+      - name: Select fresh anonymous credentials and evidence directories
+        run: |
+          echo "DOCKER_CONFIG=$RUNNER_TEMP/anonymous-docker" >> "$GITHUB_ENV"
+          echo "EVIDENCE=$RUNNER_TEMP/consumer-evidence" >> "$GITHUB_ENV"
       - name: Download the public operator release without a source checkout
         env:
           GH_TOKEN: ${{ github.token }}
@@ -84,7 +86,7 @@ jobs:
             -e VOXRIVA_DATABASE_URL=postgresql+asyncpg://voxriva:voxriva@postgres:5432/voxriva \
             -e VOXRIVA_MCP_PUBLIC_URL=http://127.0.0.1:8001/mcp \
             "ghcr.io/alexivanchyk/voxriva-mcp:$RELEASE_VERSION"
-          for attempt in {1..30}; do
+          for _attempt in {1..30}; do
             if docker exec voxriva-public-mcp python -c "import http.client; c=http.client.HTTPConnection('127.0.0.1',8001,timeout=2); c.request('GET','/mcp'); assert c.getresponse().status == 401"; then
               exit 0
             fi

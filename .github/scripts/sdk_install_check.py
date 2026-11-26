@@ -7,7 +7,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-
 SMOKE = r'''
 import asyncio
 import importlib.metadata

@@ -103,6 +103,31 @@ class SDKReleaseTests(unittest.TestCase):
         self.sdist()
         sdk.seal(self.args)
 
+    def test_metadata_description_preserves_utf8_and_normalizes_transport_newlines(self):
+        readme = "# SDK → Voxriva\n\nСинхронне та асинхронне надсилання.\n"
+        (self.source / "README.md").write_text(readme, encoding="utf-8")
+        raw = self.metadata()
+        sdk.metadata_check(raw, self.root, VERSION)
+        sdk.metadata_check(raw.replace(b"\n", b"\r\n"), self.root, VERSION)
+        sdk.wheel_check(self.wheel(), self.root, VERSION)
+        sdk.sdist_check(self.sdist(), self.root, VERSION)
+        for changed in (raw.replace("→".encode(), b"->"), raw.replace("Синхронне".encode(), b"changed"),
+                        raw.replace("→".encode(), b"\xff")):
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                sdk.metadata_check(changed, self.root, VERSION)
+
+    def test_metadata_allows_only_setuptools_added_final_newline(self):
+        (self.source / "README.md").write_text("# SDK → Voxriva\n\nDescription without a final newline", encoding="utf-8")
+        raw = self.metadata()
+        sdk.metadata_check(raw, self.root, VERSION)
+        sdk.metadata_check(raw + b"\n", self.root, VERSION)
+        for changed in (raw + b"\n\n", raw + b" ", raw.replace(b"# SDK", b" # SDK")):
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                sdk.metadata_check(changed, self.root, VERSION)
+        (self.source / "README.md").write_text("# SDK\n\nDescription with a final newline\n", encoding="utf-8")
+        with self.assertRaises(ValueError):
+            sdk.metadata_check(self.metadata() + b"\n", self.root, VERSION)
+
     def test_publication_tag_must_match_live_commit(self):
         with patch.object(sdk, "github", return_value={"object": {"type": "commit", "sha": REVISION}}):
             sdk.require_tag(VERSION)
