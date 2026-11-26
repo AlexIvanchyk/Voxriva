@@ -6,7 +6,7 @@ are recorded here. Releases remain prereleases; see
 
 ## Unreleased
 
-## 0.2.0 — source prerelease
+## 0.2.0 — prerelease
 
 - Create multiple reusable email layouts with independent publications and deployments.
   Templates can follow the active layout or pin a published version. Acceptance
@@ -15,7 +15,7 @@ are recorded here. Releases remain prereleases; see
   unsaved work in the Draft Editor.
 - Discover layouts and preview in an explicit environment through Voxriva MCP.
 - Apply migration `0014_email_layouts` with the coordinated upgrade procedure.
-  See [release notes](docs/releases/0.2.0.md) for source artifacts and upgrade steps.
+  See [release notes](docs/releases/0.2.0.md) for container artifacts and upgrade steps.
 
 ## 0.1.1 — container and SDK distribution
 

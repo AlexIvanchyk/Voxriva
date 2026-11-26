@@ -52,7 +52,7 @@ For an existing application, send a template key, recipient/device token and JSO
 context. The environment Delivery key selects the project and environment. See
 [the HTTP contract](docs/api.md) and [self-hosting guide](docs/self-hosting.md).
 
-To evaluate the layouts introduced in the 0.2.0 source prerelease, follow the
+To evaluate the layouts introduced in the 0.2.0 prerelease, follow the
 [Northstar layout walkthrough](docs/evaluate.md#inspect-northstar-email-layouts).
 
 ## License and release status
