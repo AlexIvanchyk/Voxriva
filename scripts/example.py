@@ -234,6 +234,11 @@ def parser():
         "--name", default="local", help="isolated example suffix (default: local)"
     )
     result.add_argument(
+        "--layout-preview",
+        action="store_true",
+        help="Prepare the Northstar layout editor for manual review without sending a notification",
+    )
+    result.add_argument(
         "--port", type=int, help="first-run app port (default: first free from 18080)"
     )
     result.add_argument(
@@ -313,6 +318,8 @@ def run(options, project, directory):
             )
         return
     if state:
+        if options.layout_preview != state.get("layout_preview", False):
+            raise ExampleError("Choose a separate --name for the layout preview.")
         for name in ("port", "mailpit_port"):
             requested = getattr(options, name)
             if requested is not None and requested != state[name]:
@@ -326,6 +333,7 @@ def run(options, project, directory):
         mailpit_port = choose_port(options.mailpit_port, 18025, excluded=[port])
         state = {
             "format": 1,
+            "layout_preview": options.layout_preview,
             "project": project,
             "owner": secrets.token_hex(16),
             "port": port,
@@ -403,6 +411,10 @@ def run(options, project, directory):
             flush=True,
         )
         prepare(API(state["base_url"], credentials), state, save)
+    if state.get("layout_preview"):
+        print(f"Editor: {state['base_url']}/templates/{state['template_id']}")
+        print(f"Login: {directory / 'access.txt'}")
+        return
     print(
         "Checking the first email…"
         if repeated

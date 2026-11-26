@@ -154,6 +154,7 @@ class Prepared:
     version: TemplateVersion
     provider_revision: ProviderRevision
     resolution: dict[str, Any]
+    layout_version_id: UUID | None = None
 
 
 class ValidationResult(BaseModel):

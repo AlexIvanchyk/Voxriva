@@ -23,8 +23,9 @@ from backend.app.features.providers.models import (
     ProviderConfiguration,
     ProviderRevision,
 )
+from backend.app.features.templates.layouts import pinned_layout, render_version
 from backend.app.features.templates.models import TemplateVersion
-from backend.app.features.templates.rendering import DraftContent, render_message
+from backend.app.features.templates.rendering import DraftContent
 from backend.app.infrastructure.database import utcnow
 from backend.app.infrastructure.settings import Settings
 from backend.app.shared.provider_contract import (
@@ -179,10 +180,10 @@ async def consume(
             ):
                 raise ValueError("Host not allowed")
             payload = decrypt(config, item.encrypted_payload)
-            rendered = await render_message(
-                item.channel,
-                DraftContent.model_validate(saved.content),
-                payload["context"],
+            draft = DraftContent.model_validate(saved.content)
+            layout = await pinned_layout(db, draft.layout, item.layout_version_id)
+            rendered = await render_version(
+                item.channel, draft, layout, payload["context"]
             )
             if rendered.errors or not rendered.rendered:
                 error = "context_invalid"
