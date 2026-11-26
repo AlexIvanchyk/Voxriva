@@ -72,6 +72,9 @@ async function choose(label: string) {
   fireEvent.click(await screen.findByText(label, { selector: ".ant-select-item-option-content" }));
 }
 
+// These interactions exercise several Ant Design dropdowns and debounced previews.
+const editorInteractionTimeout = 30_000;
+
 it("views different published snapshots in the Draft Editor and restores local text and the layout pin", async () => {
   mount();
   await screen.findByRole("option", { name: "en · main · v5" });
@@ -98,7 +101,7 @@ it("views different published snapshots in the Draft Editor and restores local t
   expect(screen.getByRole("combobox", { name: "Layout version" })).toHaveValue("layout-pin");
   expect(screen.queryByText("Viewing published · main · v2")).not.toBeInTheDocument();
   expect(vi.mocked(authenticatedRequest).mock.calls.some((call) => call[2] === "PUT")).toBe(false);
-});
+}, editorInteractionTimeout);
 
 it("protects unsaved edits on a language switch and lists published versions for the new language", async () => {
   const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
@@ -129,4 +132,4 @@ it("protects unsaved edits on a language switch and lists published versions for
   } finally {
     confirm.mockRestore();
   }
-});
+}, editorInteractionTimeout);
