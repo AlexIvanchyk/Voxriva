@@ -1,0 +1,151 @@
+name: Add native ARM64 images
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arm64-0.1.1
+  cancel-in-progress: false
+
+jobs:
+  build-arm64:
+    if: github.repository == 'AlexIvanchyk/Voxriva' && github.ref == 'refs/tags/v0.1.1-multiarch'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    environment: ghcr-publish
+    permissions:
+      contents: read
+      packages: write
+    env:
+      VERSION: '0.1.1'
+      ARM_TAG: '0.1.1-arm64'
+      MULTI_TAG: '0.1.1-multiarch'
+      APP_AMD64: ghcr.io/alexivanchyk/voxriva@sha256:af9d0f6e1c631569c838ba06befba18d9326009e86d238b5668b3cf72ebb0134
+      MCP_AMD64: ghcr.io/alexivanchyk/voxriva-mcp@sha256:78a71a00aa4155dbfa3e5a411b6dc3949e368fb3e8cadeb4f80c7201a735fbcf
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Require a native ARM runner and unchanged source version
+        run: |
+          test "$(uname -m)" = aarch64
+          docker info --format '{{.Architecture}}' | grep -Ex 'aarch64|arm64'
+          python - <<'PY'
+          import json, tomllib
+          from pathlib import Path
+          assert tomllib.loads(Path('pyproject.toml').read_text())['project']['version'] == '0.1.1'
+          assert json.loads(Path('frontend/package.json').read_text())['version'] == '0.1.1'
+          PY
+          echo "DOCKER_CONFIG=$RUNNER_TEMP/arm64-docker" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/arm64-evidence"
+      - name: Authenticate for the explicitly requested platform addition
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+      - name: Preserve old digests and refuse overwriting new version tags
+        run: |
+          python - <<'PY'
+          import importlib.util, json, os
+          from pathlib import Path
+          spec = importlib.util.spec_from_file_location('registry', '.github/scripts/publish.py')
+          registry = importlib.util.module_from_spec(spec); spec.loader.exec_module(registry)
+          auth = json.loads((Path(os.environ['DOCKER_CONFIG']) / 'config.json').read_text())['auths']['ghcr.io']['auth']
+          for role, package in [('APP', 'voxriva'), ('MCP', 'voxriva-mcp')]:
+              status, digest = registry.registry_head('alexivanchyk/' + package, '0.1.1', auth)
+              assert status == 200 and digest == os.environ[role + '_AMD64'].split('@')[1]
+              for tag in (os.environ['ARM_TAG'], os.environ['MULTI_TAG']):
+                  assert registry.registry_head('alexivanchyk/' + package, tag, auth)[0] == 404
+          PY
+      - name: Reuse tested frontend, SDK wheel and frontend notices without rebuilding them
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          source = Path('Dockerfile').read_text()
+          runtime = source[source.index('FROM ${PYTHON_IMAGE} AS runtime'):]
+          frontend = 'COPY --from=frontend /build/dist/ frontend/dist/'
+          notices = 'COPY --from=frontend-notices /third-party/frontend/ /app/release-metadata/third-party/frontend/'
+          wheel = 'COPY --from=sdk /dist/voxriva_sdk-0.1.1-py3-none-any.whl frontend/dist/downloads/\n'
+          assert all(source.count(x) == 1 for x in (frontend, notices, wheel))
+          runtime = runtime.replace(frontend, 'COPY --from=assets /app/frontend/dist/ frontend/dist/')
+          runtime = runtime.replace(notices, 'COPY --from=assets /app/release-metadata/third-party/frontend/ /app/release-metadata/third-party/frontend/')
+          runtime = runtime.replace(wheel, '')
+          base = next(line for line in source.splitlines() if line.startswith('ARG PYTHON_IMAGE='))
+          Path('.Dockerfile.arm64').write_text(base + '\nFROM --platform=linux/amd64 ' + os.environ['APP_AMD64'] + ' AS assets\n' + runtime)
+          PY
+      - name: Build only the two ARM64 variants
+        run: |
+          docker build --platform linux/arm64 -f .Dockerfile.arm64 \
+            --build-arg "VERSION=$VERSION" --build-arg "REVISION=$GITHUB_SHA" \
+            --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            -t "ghcr.io/alexivanchyk/voxriva:$ARM_TAG" .
+          docker build --platform linux/arm64 -f Dockerfile.mcp \
+            --build-arg "VERSION=$VERSION" --build-arg "REVISION=$GITHUB_SHA" \
+            --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            -t "ghcr.io/alexivanchyk/voxriva-mcp:$ARM_TAG" .
+      - name: Check native image metadata and retained dependency inventories
+        run: |
+          for package in voxriva voxriva-mcp; do
+            image="ghcr.io/alexivanchyk/$package:$ARM_TAG"
+            docker image inspect "$image" --format '{{.Os}}/{{.Architecture}}' | grep -Fx linux/arm64
+            docker image inspect "$image" --format '{{json .}}' > "$RUNNER_TEMP/arm64-evidence/$package-image.json"
+            container=$(docker create "$image")
+            docker cp "$container:/app/release-metadata/third-party/python/inventory.json" "$RUNNER_TEMP/arm64-evidence/$package-python.json"
+            docker rm "$container" >/dev/null
+          done
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']) / 'arm64-evidence'
+          for name in ('voxriva', 'voxriva-mcp'):
+              inventory = json.loads((root / (name + '-python.json')).read_text())
+              assert inventory['complete'] is True and inventory['packages']
+              image = json.loads((root / (name + '-image.json')).read_text())
+              assert image['Config']['Labels']['org.opencontainers.image.revision'] == os.environ['GITHUB_SHA']
+          PY
+      - name: Render the representative Northstar fixture with unchanged release limits
+        run: |
+          for package in voxriva voxriva-mcp; do
+            python .github/scripts/arm_render_smoke.py "ghcr.io/alexivanchyk/$package:$ARM_TAG" "$RUNNER_TEMP/arm64-evidence/$package-render.json"
+          done
+      - name: Publish ARM64 and compose a new index from existing AMD64 plus new ARM64
+        run: |
+          for package in voxriva voxriva-mcp; do
+            image="ghcr.io/alexivanchyk/$package"
+            docker push "$image:$ARM_TAG"
+            amd64="$APP_AMD64"
+            if test "$package" = voxriva-mcp; then amd64="$MCP_AMD64"; fi
+            arm64=$(docker image inspect "$image:$ARM_TAG" --format '{{index .RepoDigests 0}}')
+            printf '%s\n' "$arm64" > "$RUNNER_TEMP/arm64-evidence/$package-arm64-digest.txt"
+            docker buildx imagetools create --tag "$image:$MULTI_TAG" "$amd64" "$arm64"
+            docker buildx imagetools inspect --raw "$image:$MULTI_TAG" > "$RUNNER_TEMP/arm64-evidence/$package-index.json"
+            docker buildx imagetools inspect "$image:0.1.1" > "$RUNNER_TEMP/arm64-evidence/$package-amd64-preserved.txt"
+          done
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']) / 'arm64-evidence'
+          for name, key in (('voxriva', 'APP_AMD64'), ('voxriva-mcp', 'MCP_AMD64')):
+              index = json.loads((root / (name + '-index.json')).read_text())
+              rows = index['manifests']
+              assert len(rows) == 2
+              variants = {row['platform']['architecture']: row for row in rows}
+              assert set(variants) == {'amd64', 'arm64'}
+              assert variants['amd64']['digest'] == os.environ[key].split('@')[1]
+              assert variants['arm64']['digest'] == (root / (name + '-arm64-digest.txt')).read_text().strip().split('@')[1]
+              assert all(row['platform']['os'] == 'linux' for row in rows)
+              assert os.environ[key].split('@')[1] in (root / (name + '-amd64-preserved.txt')).read_text()
+          PY
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        if: success()
+        with:
+          name: native-arm64-0.1.1-${{ github.run_id }}
+          path: ${{ runner.temp }}/arm64-evidence/
+          if-no-files-found: error
+          retention-days: 14
