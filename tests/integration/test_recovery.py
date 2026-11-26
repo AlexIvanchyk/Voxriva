@@ -265,7 +265,7 @@ def test_stale_owner_cannot_send_after_lease_is_recovered(store, monkeypatch):
     app = application(store)
     import backend.app.features.notifications.delivery as runtime
 
-    original_render = runtime.render_message
+    original_render = runtime.render_version
     sent = []
 
     async def expired(*args):
@@ -282,7 +282,7 @@ def test_stale_owner_cannot_send_after_lease_is_recovered(store, monkeypatch):
     with TestClient(app) as client:
         _, _, _, template, _, _, headers = prepare(client, app)
         identifier = submit(client, template, headers, "fence")
-        monkeypatch.setattr(runtime, "render_message", expired)
+        monkeypatch.setattr(runtime, "render_version", expired)
         monkeypatch.setattr(SMTPProvider, "send", lambda *args: sent.append(True))
         asyncio.run(
             consume(factory, app.state.settings, {"smtp": SMTPProvider}, identifier)
