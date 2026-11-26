@@ -24,6 +24,12 @@ The default HTTP endpoint is `http://127.0.0.1:8001/mcp`. If you set
 database and migration revision. Credentials from the isolated example belong
 to its separate database and cannot authorize this installation.
 
+For a prebuilt deployment, the [operator download](https://github.com/AlexIvanchyk/Voxriva/releases/tag/v0.1.1)
+also includes `compose.mcp.production.yaml`. Its matching image is
+`ghcr.io/alexivanchyk/voxriva-mcp:0.1.1`; select it with `VOXRIVA_MCP_IMAGE` and
+set `VOXRIVA_MCP_PUBLIC_URL` for that installation. Follow the
+[self-hosting guide](../self-hosting.md); no checkout or image build is needed.
+
 ## 2. Create an authoring credential
 
 In **API keys**, select **Purpose → Template / MCP**. Name the credential, select

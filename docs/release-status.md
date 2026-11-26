@@ -1,19 +1,18 @@
 # Release status and compatibility
 
-Application, frontend and Python SDK metadata are **0.1.1**. This is a
-prerelease. Container/SDK publication is being verified; the existing
-[source prerelease 0.1.0](https://github.com/AlexIvanchyk/Voxriva/releases/tag/v0.1.0)
-remains available. No production support SLA or measured capacity guarantee is published.
+Application, frontend and Python SDK **0.1.1** are published as a prerelease.
+The images target **linux/amd64**. No production support SLA or measured capacity
+guarantee is published. The earlier source-only 0.1.0 release remains available.
 
 ## Where to get it
 
 | Component | Distribution |
 | --- | --- |
-| Source | [AlexIvanchyk/Voxriva on GitHub](https://github.com/AlexIvanchyk/Voxriva) |
-| Application | `ghcr.io/alexivanchyk/voxriva:0.1.1` — candidate, publication pending |
-| MCP | `ghcr.io/alexivanchyk/voxriva-mcp:0.1.1` — candidate, publication pending |
-| Operator download | `Voxriva-0.1.1-operator.tar.gz` — publication pending; [quickstart](quickstart.md) |
-| Python delivery SDK | `voxriva-sdk==0.1.1` — TestPyPI/PyPI publication pending; a matching wheel is bundled with the application |
+| Source | [0.1.1 release](https://github.com/AlexIvanchyk/Voxriva/releases/tag/v0.1.1) and [tagged source](https://github.com/AlexIvanchyk/Voxriva/tree/v0.1.1) |
+| Application | [`ghcr.io/alexivanchyk/voxriva:0.1.1`](https://github.com/AlexIvanchyk/Voxriva/pkgs/container/voxriva), public |
+| MCP | [`ghcr.io/alexivanchyk/voxriva-mcp:0.1.1`](https://github.com/AlexIvanchyk/Voxriva/pkgs/container/voxriva-mcp), public |
+| Operator download | [Voxriva-0.1.1-operator.tar.gz](https://github.com/AlexIvanchyk/Voxriva/releases/download/v0.1.1/Voxriva-0.1.1-operator.tar.gz) and [checksum](https://github.com/AlexIvanchyk/Voxriva/releases/download/v0.1.1/OPERATOR-SHA256SUMS); [quickstart](quickstart.md) |
+| Python delivery SDK | [`voxriva-sdk==0.1.1` on PyPI](https://pypi.org/project/voxriva-sdk/0.1.1/); the matching version is also bundled with the application |
 | Documentation | [Public documentation](https://alexivanchyk.github.io/Voxriva/) |
 
 Runtime installation needs no maintainer-hosted control plane, telemetry account
@@ -71,11 +70,23 @@ upgrading and follow the [upgrade/restore runbook](../PRODUCTION.md).
 
 ## Verification
 
-Release candidates require full source checks, exact-image runtime tests,
-HIGH/CRITICAL application dependency scans, dependency inventories and checksums.
-A separate public-consumer run checks anonymous pulls, startup from the operator
-download and an SDK installed from PyPI sending sync/async SMTP mail. Publication
-and that final consumer check remain pending until their actual results are linked here.
+The [full candidate checks](https://github.com/AlexIvanchyk/Voxriva/actions/runs/45886294396)
+passed, including all six E2E suites, exact-image runtime tests, HIGH/CRITICAL
+application dependency scans, dependency inventories and checksums. The
+[publishing run](https://github.com/AlexIvanchyk/Voxriva/actions/runs/45889311038)
+promoted those same image IDs without rebuilding. The release's
+`published-digests.json` records immutable registry digests and image IDs.
+
+The [SDK publication](https://github.com/AlexIvanchyk/Voxriva/actions/runs/45889314935)
+used the same wheel/sdist through TestPyPI and PyPI, verified their index hashes,
+and passed clean installation checks on Python 3.10 and 3.13. The SDK source tree
+was unchanged from its original successful candidate.
+
+The [public consumer check](https://github.com/AlexIvanchyk/Voxriva/actions/runs/45889970570)
+passed: anonymous pulls, startup from the operator download without a source
+checkout, and a PyPI-installed SDK sending sync/async mail to local SMTP. The
+three received messages (launcher, sync and async) and the SDK idempotent replay
+were verified; repeating the SDK operation created no duplicate mail.
 
 Kubernetes/Helm, a provisioned HA topology, campaigns, subscriber management,
 business scheduling and MCP OAuth onboarding are outside the current scope.
