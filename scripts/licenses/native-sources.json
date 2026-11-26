@@ -62,9 +62,13 @@
       "owner_version": "13.0.0",
       "name": "libaom",
       "version": "3.14.1",
-      "url": "https://aomedia.googlesource.com/aom/+archive/refs/tags/v3.14.1.tar.gz",
-      "sha256": "f95c61aada7fb59d1897f9f48af821b7f15429e37b6f9aba1e70bdbf053ceb50",
-      "provenance": "Pillow13.0.0 wheel/library inventory and upstream build dependency recipe"
+      "url": "https://storage.googleapis.com/aom-releases/libaom-3.14.1.tar.gz",
+      "sha256": "44bf90dbd23e734d50e70a8c41c285193922938bd0d3bc2ee56764d181d55ef5",
+      "provenance": "Official AOMedia published release tarball. Its 1,445 source-file contents match the v3.14.1 Git tree; the generated Gitiles archive is not a byte-stable distribution artifact.",
+      "source_commit": "03087864cf4bea6abb0d28f95cf7843511413d8f",
+      "source_tree": "cdf510ea9068cb14b11231db6257198990a5f8df",
+      "release_announcement": "https://aomedia.org/blog%20posts/AOMedia-Announces-Availability-of-Libaom-v3_14/",
+      "signature_url": "https://storage.googleapis.com/aom-releases/libaom-3.14.1.tar.gz.asc"
     },
     {
       "owner": "pillow",

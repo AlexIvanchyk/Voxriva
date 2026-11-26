@@ -76,9 +76,8 @@ def project(root, version):
     return metadata["project"]
 
 
-def identity(version, run_id, attempt, workflow_id):
+def identity(version, run_id, attempt, workflow_id, revision):
     repository = os.environ["GITHUB_REPOSITORY"]
-    revision = os.environ["GITHUB_SHA"]
     require(re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository), "Invalid repository identity")
     require(re.fullmatch(r"[0-9a-f]{40}", revision), "Use a full commit revision")
     require(all(re.fullmatch(r"[1-9]\d*", str(value)) for value in (run_id, attempt, workflow_id)),
@@ -105,15 +104,50 @@ def require_tag(version):
             "Remote release tag does not identify this exact checked commit")
 
 
+def sdk_tree(revision):
+    """Resolve the complete SDK tree using only immutable Git object IDs."""
+    require(re.fullmatch(r"[0-9a-f]{40}", revision), "SDK tree lookup requires a full immutable commit SHA")
+    commit = github(f"git/commits/{revision}")
+    require(commit.get("sha") == revision, "GitHub returned another source commit")
+    tree = commit["tree"]["sha"]
+    for directory in ("sdk", "python"):
+        require(re.fullmatch(r"[0-9a-f]{40}", tree), "Invalid immutable Git tree SHA")
+        listing = github(f"git/trees/{tree}")
+        require(listing.get("sha") == tree and listing.get("truncated") is False, "Incomplete Git tree response")
+        matches = [entry for entry in listing["tree"] if entry["path"] == directory]
+        require(len(matches) == 1 and matches[0]["type"] == "tree" and matches[0]["mode"] == "040000",
+                "SDK path must be a regular Git directory")
+        tree = matches[0]["sha"]
+    require(re.fullmatch(r"[0-9a-f]{40}", tree), "Invalid SDK tree SHA")
+    return tree
+
+
 def validate_reuse(run, workflow_id):
     require(run.get("repository", {}).get("full_name") == os.environ["GITHUB_REPOSITORY"]
             and run.get("head_repository", {}).get("full_name") == os.environ["GITHUB_REPOSITORY"],
             "Candidate run belongs to another repository")
     require(run.get("workflow_id") == workflow_id and run.get("path") == WORKFLOW,
             "Candidate run belongs to another workflow")
-    require(run.get("head_sha") == os.environ["GITHUB_SHA"], "Candidate commit differs from this checkout")
     require(run.get("event") == "workflow_dispatch" and run.get("status") == "completed"
             and run.get("conclusion") == "success", "Only a completed successful SDK candidate run may be reused")
+    revision = run.get("head_sha", "")
+    require(re.fullmatch(r"[0-9a-f]{40}", revision), "Candidate source must be an immutable full commit SHA")
+    if revision != os.environ["GITHUB_SHA"]:
+        require(sdk_tree(revision) == sdk_tree(os.environ["GITHUB_SHA"]),
+                "Candidate SDK tree differs from the entire current sdk/python tree")
+
+
+def validate_install_jobs(jobs, run):
+    required = {f"install ({python}, {format})" for python in ("3.10", "3.13") for format in ("wheel", "sdist")}
+    require(jobs.get("total_count", 101) <= 100 and len(jobs["jobs"]) == jobs["total_count"],
+            "SDK attempt jobs response is incomplete")
+    for name in required:
+        matches = [job for job in jobs["jobs"] if job["name"] == name]
+        require(len(matches) == 1, "Candidate is missing an unambiguous required SDK install check")
+        job = matches[0]
+        require(job.get("run_id") == run["id"] and job.get("run_attempt") == run["run_attempt"]
+                and job.get("head_sha") == run["head_sha"] and job.get("status") == "completed"
+                and job.get("conclusion") == "success", "A required SDK install check has not passed for this exact run attempt")
 
 
 def plan(args):
@@ -122,14 +156,18 @@ def plan(args):
         require_tag(args.version)
     workflow_id = github("actions/workflows/sdk-release.yml")["id"]
     source_run, attempt = os.environ["GITHUB_RUN_ID"], os.environ["GITHUB_RUN_ATTEMPT"]
+    source_revision = os.environ["GITHUB_SHA"]
     artifact_id = ""
     if args.candidate_run_id:
         require(re.fullmatch(r"[1-9]\d*", args.candidate_run_id), "Candidate run ID must be numeric")
         require(args.candidate_run_id != source_run, "A run cannot reuse itself")
         run = github(f"actions/runs/{args.candidate_run_id}")
+        require(run.get("id") == int(args.candidate_run_id), "GitHub returned another candidate run")
         validate_reuse(run, workflow_id)
+        validate_install_jobs(github(f"actions/runs/{run['id']}/attempts/{run['run_attempt']}/jobs?per_page=100"), run)
         source_run, attempt = str(run["id"]), str(run["run_attempt"])
-        source = identity(args.version, source_run, attempt, workflow_id)
+        source_revision = run["head_sha"]
+        source = identity(args.version, source_run, attempt, workflow_id, source_revision)
         artifacts = github(f"actions/runs/{source_run}/artifacts?per_page=100")
         matches = [item for item in artifacts["artifacts"] if item["name"] == artifact_name(source)]
         require(len(matches) == 1 and not matches[0]["expired"], "Exact candidate artifact is missing or expired")
@@ -138,9 +176,9 @@ def plan(args):
                 and item["workflow_run"].get("head_sha") == source["revision"], "Artifact provenance differs from source run")
         require(0 < item["size_in_bytes"] <= MAX_SIZE, "Candidate artifact has an unexpected size")
         artifact_id = str(item["id"])
-    source = identity(args.version, source_run, attempt, workflow_id)
+    source = identity(args.version, source_run, attempt, workflow_id, source_revision)
     output(version=args.version, source_run=source_run, source_attempt=attempt,
-           workflow_id=workflow_id, artifact=artifact_name(source), artifact_id=artifact_id)
+           workflow_id=workflow_id, source_revision=source_revision, artifact=artifact_name(source), artifact_id=artifact_id)
 
 
 def source_bytes(root, relative):
@@ -262,7 +300,8 @@ def distributions(bundle, root, version):
 def seal(args):
     require({path.name for path in args.bundle.iterdir()} == {"dist"}, "Candidate output must be new and contain only dist/")
     files = distributions(args.bundle, args.root, args.version)
-    source = identity(args.version, args.source_run, args.source_attempt, args.workflow_id)
+    require(args.source_revision == os.environ["GITHUB_SHA"], "A new SDK build must be sealed against this checkout")
+    source = identity(args.version, args.source_run, args.source_attempt, args.workflow_id, args.source_revision)
     manifest = {"source": source, "sha256": files}
     manifest_bytes = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode()
     (args.bundle / "sdk-release.json").write_bytes(manifest_bytes)
@@ -275,7 +314,7 @@ def verify(args):
     require({path.name for path in args.bundle.iterdir()} == {"dist", "sdk-release.json", "SHA256SUMS"},
             "Unexpected candidate bundle files")
     require(all(not path.is_symlink() for path in args.bundle.iterdir()), "Candidate bundle contains a symlink")
-    expected = identity(args.version, args.source_run, args.source_attempt, args.workflow_id)
+    expected = identity(args.version, args.source_run, args.source_attempt, args.workflow_id, args.source_revision)
     manifest = json.loads((args.bundle / "sdk-release.json").read_text())
     require(manifest.get("source") == expected, "Bundle provenance differs from trusted GitHub run identity")
     files = distributions(args.bundle, args.root, args.version)
@@ -346,6 +385,7 @@ def main():
             item.add_argument("--source-run", required=True)
             item.add_argument("--source-attempt", required=True)
             item.add_argument("--workflow-id", required=True)
+            item.add_argument("--source-revision", required=True)
         if command == "index":
             item.add_argument("--index", choices=INDEXES, required=True)
             item.add_argument("--mode", choices=("require-absent", "prepare-test", "match"), required=True)

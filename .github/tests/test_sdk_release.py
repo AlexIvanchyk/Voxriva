@@ -11,7 +11,7 @@ import unittest
 import urllib.error
 import zipfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/sdk_release.py"
 spec = importlib.util.spec_from_file_location("sdk_release", SCRIPT)
@@ -49,7 +49,7 @@ class SDKReleaseTests(unittest.TestCase):
         self.bundle = self.root / "candidate"
         (self.bundle / "dist").mkdir(parents=True)
         self.args = argparse.Namespace(root=self.root, version=VERSION, bundle=self.bundle,
-                                       source_run="123", source_attempt="1", workflow_id="42")
+                                       source_run="123", source_attempt="1", workflow_id="42", source_revision=REVISION)
 
     def metadata(self):
         return (f"Metadata-Version: 2.4\nName: voxriva-sdk\nVersion: {VERSION}\nRequires-Python: >=3.10\n"
@@ -136,13 +136,13 @@ class SDKReleaseTests(unittest.TestCase):
         with patch.object(sdk, "github", return_value={"object": {"type": "commit", "sha": "b" * 40}}), self.assertRaises(ValueError):
             sdk.require_tag(VERSION)
 
-    def test_reuse_rejects_other_repository_workflow_commit_attempt_and_failed_run(self):
+    def test_reuse_rejects_other_repository_workflow_ref_attempt_and_failed_run(self):
         run = {"repository": {"full_name": "AlexIvanchyk/Voxriva"}, "head_repository": {"full_name": "AlexIvanchyk/Voxriva"},
                "workflow_id": 42, "path": sdk.WORKFLOW, "head_sha": REVISION,
                "event": "workflow_dispatch", "status": "completed", "conclusion": "success"}
         sdk.validate_reuse(run, 42)
         for key, value in (("head_repository", {"full_name": "another/fork"}), ("workflow_id", 43),
-                           ("path", ".github/workflows/other.yml"), ("head_sha", "b" * 40),
+                           ("path", ".github/workflows/other.yml"), ("head_sha", "refs/heads/main"),
                            ("event", "pull_request"), ("status", "in_progress"), ("conclusion", "failure")):
             with self.subTest(key=key), self.assertRaises(ValueError):
                 sdk.validate_reuse({**run, key: value}, 42)
@@ -150,6 +150,92 @@ class SDKReleaseTests(unittest.TestCase):
         self.args.source_attempt = "2"
         with self.assertRaises(ValueError):
             sdk.verify(self.args)
+
+    def test_reuse_across_commits_requires_identical_entire_sdk_git_tree(self):
+        run = {"repository": {"full_name": "AlexIvanchyk/Voxriva"}, "head_repository": {"full_name": "AlexIvanchyk/Voxriva"},
+               "workflow_id": 42, "path": sdk.WORKFLOW, "head_sha": "b" * 40,
+               "event": "workflow_dispatch", "status": "completed", "conclusion": "success"}
+        with patch.object(sdk, "sdk_tree", return_value="c" * 40) as lookup:
+            sdk.validate_reuse(run, 42)
+            self.assertEqual(lookup.call_args_list, [call("b" * 40), call(REVISION)])
+        with patch.object(sdk, "sdk_tree", side_effect=["c" * 40, "d" * 40]), self.assertRaises(ValueError):
+            sdk.validate_reuse(run, 42)
+        # Verification binds the original source revision provided by plan, not
+        # the publisher revision and never a revision read from the manifest.
+        self.sealed()
+        with patch.dict(os.environ, {"GITHUB_SHA": "b" * 40}):
+            sdk.verify(self.args)
+            self.args.source_revision = "b" * 40
+            with self.assertRaises(ValueError):
+                sdk.verify(self.args)
+            self.args.source_revision = REVISION
+            (self.source / "README.md").write_text("Changed README\n")
+            with self.assertRaises(ValueError):
+                sdk.verify(self.args)
+
+    def test_sdk_tree_uses_immutable_git_objects_and_rejects_refs_and_symlinks(self):
+        root, child, expected = "c" * 40, "d" * 40, "e" * 40
+        responses = {
+            f"git/commits/{REVISION}": {"sha": REVISION, "tree": {"sha": root}},
+            f"git/trees/{root}": {"sha": root, "truncated": False, "tree": [
+                {"path": "sdk", "mode": "040000", "type": "tree", "sha": child}]},
+            f"git/trees/{child}": {"sha": child, "truncated": False, "tree": [
+                {"path": "python", "mode": "040000", "type": "tree", "sha": expected}]},
+        }
+        with patch.object(sdk, "github", side_effect=responses.__getitem__) as api:
+            self.assertEqual(sdk.sdk_tree(REVISION), expected)
+            self.assertEqual(api.call_count, 3)
+        for revision in ("main", "refs/tags/v0.1.1", REVISION[:7]):
+            with self.subTest(revision=revision), patch.object(sdk, "github") as api, self.assertRaises(ValueError):
+                sdk.sdk_tree(revision)
+            api.assert_not_called()
+        responses[f"git/trees/{root}"]["truncated"] = True
+        with patch.object(sdk, "github", side_effect=responses.__getitem__), self.assertRaises(ValueError):
+            sdk.sdk_tree(REVISION)
+        responses[f"git/trees/{root}"]["truncated"] = False
+        responses[f"git/trees/{child}"]["tree"][0].update({"mode": "120000", "type": "blob"})
+        with patch.object(sdk, "github", side_effect=responses.__getitem__), self.assertRaises(ValueError):
+            sdk.sdk_tree(REVISION)
+
+    def install_jobs(self, run):
+        return {"total_count": 4, "jobs": [
+            {"name": f"install ({python}, {format})", "run_id": run["id"], "run_attempt": run["run_attempt"],
+             "head_sha": run["head_sha"], "status": "completed", "conclusion": "success"}
+            for python in ("3.10", "3.13") for format in ("wheel", "sdist")]}
+
+    def test_all_four_install_jobs_must_pass_in_exact_candidate_attempt(self):
+        run = {"id": 456, "run_attempt": 2, "head_sha": REVISION}
+        sdk.validate_install_jobs(self.install_jobs(run), run)
+        for key, value in (("run_id", 999), ("run_attempt", 1), ("head_sha", "b" * 40),
+                           ("conclusion", "failure"), ("conclusion", "skipped"), ("status", "in_progress")):
+            jobs = self.install_jobs(run)
+            jobs["jobs"][0][key] = value
+            with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                sdk.validate_install_jobs(jobs, run)
+        jobs = self.install_jobs(run)
+        jobs["jobs"].pop()
+        jobs["total_count"] = 3
+        with self.assertRaises(ValueError):
+            sdk.validate_install_jobs(jobs, run)
+
+    def test_reuse_plan_exports_original_revision_and_rejects_another_artifact_source(self):
+        run = {"id": 456, "run_attempt": 1, "head_sha": "b" * 40,
+               "repository": {"full_name": "AlexIvanchyk/Voxriva"}, "head_repository": {"full_name": "AlexIvanchyk/Voxriva"},
+               "workflow_id": 42, "path": sdk.WORKFLOW, "event": "workflow_dispatch", "status": "completed", "conclusion": "success"}
+        artifact = {"id": 789, "name": f"sdk-{VERSION}-{'b' * 40}-456-1", "expired": False, "size_in_bytes": 100,
+                    "workflow_run": {"id": 456, "head_sha": "b" * 40}}
+        responses = {"actions/workflows/sdk-release.yml": {"id": 42}, "actions/runs/456": run,
+                     "actions/runs/456/attempts/1/jobs?per_page=100": self.install_jobs(run),
+                     "actions/runs/456/artifacts?per_page=100": {"artifacts": [artifact]}}
+        args = argparse.Namespace(root=self.root, version=VERSION, target="candidate", candidate_run_id="456")
+        with patch.object(sdk, "github", side_effect=responses.__getitem__), patch.object(sdk, "sdk_tree", return_value="c" * 40):
+            sdk.plan(args)
+        outputs = (self.root / "outputs").read_text()
+        self.assertIn("source_revision=" + "b" * 40, outputs)
+        self.assertIn("artifact=" + artifact["name"], outputs)
+        artifact["workflow_run"]["head_sha"] = REVISION
+        with patch.object(sdk, "github", side_effect=responses.__getitem__), patch.object(sdk, "sdk_tree", return_value="c" * 40), self.assertRaises(ValueError):
+            sdk.plan(args)
 
     def test_wheel_blocks_private_files_changed_source_missing_type_marker_and_license(self):
         sdk.wheel_check(self.wheel(), self.root, VERSION)
