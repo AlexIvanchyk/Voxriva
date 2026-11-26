@@ -7,7 +7,13 @@ from backend.app.features.deployments.compatibility import (
     CompatibilityIssue,
     schema_changes,
 )
+from backend.app.features.deployments.layout_contracts import (
+    active_contracts,
+    check_contracts,
+    dependent_letters,
+)
 from backend.app.features.deployments.models import DeploymentEvent, TemplateDeployment
+from backend.app.features.deployments.resolution import effective
 from backend.app.features.deployments.schemas import (
     ChangeInput,
     DeployInput,
@@ -71,45 +77,6 @@ async def slot(
     return result
 
 
-async def effective(
-    db: AsyncSession, item: Template, target: ScopeInput, ignore_key: str | None = None
-) -> tuple[TemplateVersion, str, bool] | None:
-    keys = [target.key]
-    if target.scope == "environment":
-        keys.append(f"project:{target.project_id}")
-    if target.scope != "global":
-        keys.append("global")
-    locales = [target.locale] + (
-        [item.fallback_locale] if item.fallback_locale != target.locale else []
-    )
-    rows = list(
-        await db.scalars(
-            select(TemplateDeployment).where(
-                TemplateDeployment.template_id == item.id,
-                TemplateDeployment.scope_key.in_(keys),
-                TemplateDeployment.locale.in_(locales),
-                TemplateDeployment.version_id.is_not(None),
-            )
-        )
-    )
-    for locale in locales:
-        for key in keys:
-            pointer = next(
-                (
-                    row
-                    for row in rows
-                    if row.scope_key == key
-                    and row.locale == locale
-                    and (not (key == ignore_key and locale == target.locale))
-                ),
-                None,
-            )
-            if pointer and pointer.version_id:
-                resolved = await version(db, item.id, pointer.version_id)
-                return (resolved, pointer.scope, locale != target.locale)
-    return None
-
-
 async def ensure_compatible(
     old: TemplateVersion | None, new: TemplateVersion | None, allow: bool
 ) -> list[CompatibilityIssue]:
@@ -165,14 +132,28 @@ async def change(
     if new is None:
         inherited = await effective(db, item, payload, ignore_key=payload.key)
         next_effective = inherited[0] if inherited else None
-    await ensure_compatible(
-        old[0] if old else None, next_effective, payload.allow_breaking
+    composing_letter = not item.is_layout and any(
+        candidate and candidate.content.get("layout")
+        for candidate in (next_effective, old[0] if old else None)
     )
+    # A variable can move between the letter and its layout while preserving
+    # the sender's contract. Compare those versions in their effective scopes.
+    if not composing_letter:
+        await ensure_compatible(
+            old[0] if old else None, next_effective, payload.allow_breaking
+        )
     if (pointer.version_id if pointer else None) == (new.id if new else None):
         raise ApplicationError(
             409,
             "This deployment already has the selected version or inheritance setting",
         )
+    letters = []
+    if item.is_layout:
+        letters = list(await dependent_letters(db, item.id))
+    elif composing_letter:
+        letters = [item]
+    dependency = item.id if item.is_layout else None
+    before = await active_contracts(db, letters, payload, dependency)
     previous = pointer.version_id if pointer else None
     if pointer is None:
         pointer = TemplateDeployment(
@@ -207,6 +188,10 @@ async def change(
             created_at=utcnow(),
         )
     )
+    if letters:
+        await db.flush()
+        after = await active_contracts(db, letters, payload, dependency)
+        check_contracts(before, after, payload.allow_breaking and not item.is_layout)
     audit(db, principal.account.id, f"template.{action}", item.id, payload.project_id)
     await commit(db)
     return pointer
@@ -356,7 +341,10 @@ async def fallback(
             409,
             "Changing fallback may change active resolutions. Explicitly acknowledge this change.",
         )
+    letters = await dependent_letters(db, item.id) if item.is_layout else []
+    before = await active_contracts(db, letters, None, item.id)
     item.fallback_locale = payload.locale
+    check_contracts(before, await active_contracts(db, letters, None, item.id))
     audit(db, principal.account.id, "template.fallback.update", template_id)
     await commit(db)
     return {"fallback_locale": item.fallback_locale}

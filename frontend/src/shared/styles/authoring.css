@@ -1,6 +1,8 @@
 /* Template authoring */
 .language-toolbar { align-items: end; flex-wrap: wrap; gap: 14px; }
-.language-toolbar > div:first-child .ant-select { min-width: 240px; }
+.language-toolbar > div.editor-selection { display: flex; flex-wrap: wrap; gap: 14px; }
+.editor-selection > div { display: grid; gap: 7px; }
+.editor-selection .ant-select { min-width: 180px; }
 .language-status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; flex: 1; }
 .advanced-branches { margin: 4px 0 12px; border-bottom: 1px solid #e4e8f0; }
 .advanced-branches .ant-select { min-width: 220px; }
@@ -53,7 +55,7 @@
 .push-data-row { display: grid; grid-template-columns: minmax(60px, auto) minmax(0, 1fr) auto; align-items: center; gap: 8px; margin-bottom: 10px; }
 .publication-context { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
 @media (max-width: 1150px) { .authoring-workspace { grid-template-columns: minmax(0, 1fr) !important; } .authoring-workspace > .template-preview { position: static; max-height: none; overflow: visible; } .workspace-controls { display: none; } }
-@media (max-width: 600px) { .variable-properties { grid-template-columns: 1fr; } .draft-savebar { position: static; } .language-toolbar > div:first-child .ant-select { min-width: 180px; } .variable-card > header .ant-space { flex-wrap: wrap; } }
+@media (max-width: 600px) { .variable-properties { grid-template-columns: 1fr; } .draft-savebar { position: static; } .variable-card > header .ant-space { flex-wrap: wrap; } }
 
 .template-usage { display: grid; gap: 6px; margin: 12px 0; }
 
@@ -69,3 +71,7 @@
 .template-editor-page .lifecycle-tabs > .ant-tabs-nav .ant-tabs-tab { padding-block: 10px; }
 .template-editor-page .lifecycle-help { margin-block: 6px 12px; }
 .variable-card > header code { overflow-wrap: anywhere; white-space: normal; }
+
+.layout-picker { margin: 0 0 16px; }
+.layout-picker label { display: grid; gap: 4px; font-size: 13px; }
+.layout-picker select { padding: 6px 10px; color: inherit; background: white; border: 1px solid #c8d1ce; border-radius: 6px; }

@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { errorMessage, useRecords } from "../../shared/api/client";
 
 interface Scope { id: string; name: string; project: { id: string; name: string } }
-interface Template { id: string; name: string; key: string; channel: "email" | "push" }
+interface Template { is_layout?: boolean; id: string; name: string; key: string; channel: "email" | "push" }
 const shell = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'";
 const py = (value: string) => JSON.stringify(value);
 
@@ -59,7 +59,7 @@ asyncio.run(main())`;
     <p><strong>{scope.project.name} / {scope.name}</strong> · Environment <Typography.Text code>{scope.id}</Typography.Text></p>
     <Alert type="info" showIcon message="Use an API key issued for this environment" description="Replace all placeholders and provide the actual published template's runtime values. Preview data is never substituted. Examples never include a saved API key and do not send anything from this screen." />
     <div className="integration-filters"><Select aria-label="Integration channel" value={channel} onChange={(value) => { setChannel(value); setTemplateKey(undefined); }} options={[{ value: "email", label: "Email" }, { value: "push", label: "Push" }]} />
-      <Select aria-label="Integration template" placeholder="Choose a connected template" allowClear showSearch optionFilterProp="label" value={templateKey} onChange={setTemplateKey} options={(query.data?.data ?? []).filter((item) => item.channel === channel).map((item) => ({ value: item.key, label: `${item.name} · ${item.key}` }))} />
+      <Select aria-label="Integration template" placeholder="Choose a connected template" allowClear showSearch optionFilterProp="label" value={templateKey} onChange={setTemplateKey} options={(query.data?.data ?? []).filter((item) => !item.is_layout && item.channel === channel).map((item) => ({ value: item.key, label: `${item.name} · ${item.key}` }))} />
       <Input aria-label="Integration locale" value={locale} onChange={(event) => setLocale(event.target.value)} placeholder="Locale" maxLength={35} /></div>
     {query.error && <Alert type="error" message={errorMessage(query.error)} />}
     <p className="muted-text">The template must be published and deployed here, with a provider assigned to its channel. Use an empty context object if no runtime variables are required.</p>

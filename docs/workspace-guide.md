@@ -169,6 +169,13 @@ content or data. **Runtime defaults** is a separate form: delivery context overr
 top-level default, including replacing entire nested objects. Unset, false, zero and
 empty string values are distinct. Advanced JSON is available for both data sets.
 
+In **Draft editor**, use **Template version** beside **Editing language** to
+inspect a published snapshot for the selected language. Each option names its
+branch and version. The editor marks the snapshot as **Viewing published**.
+Select **Current draft** to return to your in-progress edits. Changing languages
+with unsaved changes still asks for confirmation. For a letter with a layout,
+**Layout version** in the draft content controls its separate layout reference.
+
 The header distinguishes saved draft, unpublished changes, published version and versions
 resolved by environments (including fallback). Version history filters by language/branch.
 Publication checks the saved revision and shows changed sections and validation issues.
@@ -178,6 +185,30 @@ Saving is manual, with **Ctrl/Cmd S**, failure feedback, optimistic revision pro
 and unsaved-navigation warnings. After a timeout the editor reconciles the server revision
 before offering a retry; a response timeout alone does not prove a save failed.
 Autosave and a visual email block builder remain deferred.
+
+## Author email layouts
+
+In **Templates → Create template**, choose **Email layout** for a reusable
+header, footer and styles, or **Email template** for a message with its own
+subject and body. A workspace can contain multiple layouts. Give each layout
+HTML, plain text or both. In each authored format, put exactly one
+`<!-- voxriva:body -->` where the message body belongs. In HTML, place it as a
+comment in the document. Use **Publish version** and **Deployments** on the
+layout itself.
+
+In the email template's **Draft editor**, select an **Email layout** connected
+to the preview project. **Layout version → Active in environment** follows the
+deployment for the target. To pin it, choose a published version of that layout
+in the letter's language or the layout's configured fallback language. Choose
+**No layout** to detach it. Switching these controls preserves the local body
+and updates the live preview. **Preview target** changes the context for
+preview only. Save and publish the template to record a different layout
+reference, then deploy that template version to use it for delivery.
+
+The editor shows inherited variables, defaults and images alongside the local
+ones. Edit inherited definitions in the layout. See the
+[composition contract](journeys/email.md#email-layout-composition) and
+[layout deployment behavior](journeys/lifecycle.md#layout-resolution).
 
 ## Versions, branches, locales and deployments
 

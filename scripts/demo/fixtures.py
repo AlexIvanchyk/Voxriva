@@ -90,3 +90,46 @@ def email_draft(locale="en"):
             },
         },
     }
+
+
+def layout_demo():
+    """Split the existing welcome email into its reusable brand shell and local copy."""
+    letter = email_draft()
+    slot = "<!-- voxriva:body -->"
+    header, body = letter["html"].split('<div style="padding:32px">')
+    body, footer = body.split('<p style="font-size:13px;')
+    layout = {
+        "html": header
+        + '<div style="padding:32px">'
+        + slot
+        + '<p style="font-size:13px;'
+        + footer,
+        "text": "NORTHSTAR MARKET\n\n" + slot + "\nQuestions? {{ phone }}",
+        "images": letter.pop("images"),
+        "runtime_defaults": letter.pop("runtime_defaults"),
+    }
+    schema = letter["variable_schema"]
+    props = {name: schema["properties"].pop(name) for name in ("phone", "banner")}
+    layout["variable_schema"] = {**schema, "properties": props, "required": list(props)}
+    schema["required"] = ["first_name", "account_url"]
+    letter["html"] = body
+    letter["text"] = letter["text"].split("\nQuestions?")[0]
+    letter["preview_context"] = letter["scenarios"]["New customer"].copy()
+    night = {
+        **layout,
+        "html": '<div style="background:#192438;padding:28px;color:#182137;font-family:Georgia,serif">'
+        '<div style="max-width:560px;margin:auto;background:#fff7e9">'
+        '<div style="padding:18px;background:#f4ca78"><img src="voxriva-image:logo" alt="Northstar Market" width="150">'
+        '<p style="letter-spacing:3px">THE EVENING EDITION</p></div>'
+        '<img src="{{ banner }}" width="560" style="width:100%" alt="Seasonal collection">'
+        '<div style="padding:32px">' + slot + "</div>"
+        '<div style="padding:18px;background:#26374e;color:white">Northstar Market · {{ phone }}</div></div></div>',
+        "text": "NORTHSTAR · THE EVENING EDITION\n\n"
+        + slot
+        + "\nNorthstar Market · {{ phone }}",
+        "runtime_defaults": {
+            **layout["runtime_defaults"],
+            "banner": image("northstar-seasonal.png"),
+        },
+    }
+    return letter, layout, night

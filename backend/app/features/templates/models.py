@@ -8,6 +8,7 @@ from sqlalchemy import (
     ForeignKey,
     String,
     UniqueConstraint,
+    false,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -23,6 +24,7 @@ class Template(Base):
     key: Mapped[str] = mapped_column(String(100), unique=True)
     name: Mapped[str] = mapped_column(String(100))
     channel: Mapped[str] = mapped_column(String(10))
+    is_layout: Mapped[bool] = mapped_column(default=False, server_default=false())
     primary_locale: Mapped[str] = mapped_column(String(35), default="en")
     fallback_locale: Mapped[str] = mapped_column(String(35), default="en")
     updated_at: Mapped[datetime] = mapped_column(

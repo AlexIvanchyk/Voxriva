@@ -102,7 +102,10 @@ class Authoring:
             results = await templates.list_templates(db, principal, requested)
             visible = []
             query = args.get("query", "").casefold()
+            is_layout = args.get("is_layout")
             for item in results:
+                if is_layout is not None and item.is_layout != is_layout:
+                    continue
                 try:
                     await template_access(db, author, item.id)
                 except ApplicationError as error:
@@ -139,6 +142,8 @@ class Authoring:
                 or not set(payload.project_ids) <= author.project_ids
             ):
                 raise ApplicationError(403, "Connect only projects in credential scope")
+            if payload.draft.layout:
+                await template_access(db, author, payload.draft.layout.template_id)
             return await templates.create_template(payload, db, principal)
         template_id = args["template_id"]
         write = operation in {"add_language", "create_branch"} or (
@@ -234,7 +239,12 @@ class Authoring:
                         )
                     report = await templates.preview(
                         change.template_id,
-                        PreviewInput(draft=change.draft, branch_id=change.branch_id),
+                        PreviewInput(
+                            draft=change.draft,
+                            branch_id=change.branch_id,
+                            project_id=change.project_id,
+                            environment_id=change.environment_id,
+                        ),
                         self.runtime,
                         db,
                         author.principal,

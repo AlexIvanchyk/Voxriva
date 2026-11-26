@@ -83,7 +83,7 @@ export function DataFields({ schema, value, onChange, disabled, label = "Test da
 
 export function contentChanges(before: Draft, after: Draft): string[] {
   const result: string[] = [];
-  for (const key of ["images", "subject", "html", "text", "title", "body", "data", "variable_schema", "runtime_defaults", "preview_context", "scenarios"] as const) if (JSON.stringify(before[key]) !== JSON.stringify(after[key])) result.push(({ images: "Saved images", subject: "Email subject", html: "HTML content", text: "Plain text", title: "Push title", body: "Push message", data: "Push data", variable_schema: "Variable contract", runtime_defaults: "Runtime defaults", preview_context: "Preview test data", scenarios: "Preview scenarios" })[key]);
+  for (const key of ["layout", "images", "subject", "html", "text", "title", "body", "data", "variable_schema", "runtime_defaults", "preview_context", "scenarios"] as const) if (JSON.stringify(before[key]) !== JSON.stringify(after[key])) result.push(({ layout: "Email layout", images: "Saved images", subject: "Email subject", html: "HTML content", text: "Plain text", title: "Push title", body: "Push message", data: "Push data", variable_schema: "Variable contract", runtime_defaults: "Runtime defaults", preview_context: "Preview test data", scenarios: "Preview scenarios" })[key]);
   return result;
 }
 

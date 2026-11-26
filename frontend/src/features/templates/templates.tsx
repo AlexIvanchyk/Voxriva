@@ -8,6 +8,7 @@ import { DeleteAction, Editor } from "../../shared/ui/adminForms";
 import { canEdit, canManage, useProjectContext } from "../projects/projectContext";
 import type { Session } from "../session/session";
 import { authenticatedRequest } from "../session/session";
+import type { PreviewTarget } from "./layoutPicker";
 import { DraftEditor } from "./draftEditor";
 import { LanguageSelect, languageLabel } from "./templateFields";
 import { TemplateLifecycle } from "./templateLifecycle";
@@ -43,7 +44,7 @@ export function TemplatesPage({ session }: { session: Session }) {
       scroll={{ x: 700 }} locale={{ emptyText: <Empty description={search || filter ? "No matching templates" : "No templates yet"} /> }} columns={[
         { title: "Template", key: "name", render: (_, item) => <div className="member-identity"><span className="directory-icon"><FileTextOutlined aria-hidden="true" /></span><div>
           <Link to={`/templates/${item.id}`}><strong>{item.name}</strong></Link><span>{item.key}</span></div></div> },
-        { title: "Channel", key: "channel", render: (_, item) => <Tag color={item.channel === "email" ? "blue" : "purple"}>{item.channel === "email" ? "Email" : "Push"}</Tag> },
+        { title: "Channel", key: "channel", render: (_, item) => <Tag color={item.channel === "email" ? "blue" : "purple"}>{item.channel === "email" ? item.is_layout ? "Email layout" : "Email" : "Push"}</Tag> },
         { title: "Languages", key: "languages", render: (_, item) => <Space wrap>{item.languages.map((code) => <Tag key={code}>{languageLabel(code)}{code === item.primary_locale ? " · primary" : ""}</Tag>)}</Space> },
         { title: "Connected projects", key: "projects", render: (_, item) => item.project_count ? <Space wrap>{item.projects.map((project) => <Tag key={project.id}>{project.name}</Tag>)}
           {item.project_count > item.projects.length && <Tag>+{item.project_count - item.projects.length} shared</Tag>}</Space> : <span className="muted-text">Not connected</span> },
@@ -53,16 +54,17 @@ export function TemplatesPage({ session }: { session: Session }) {
             await authenticatedRequest(session, `/templates/${item.id}`, "DELETE"); await query.refetch();
           }} />}</Space> },
       ]} /></QueryContent>
-    {open && <Editor<{ name: string; key?: string; channel: "email" | "push"; project_ids?: string[]; locale: string }> title="Create template"
+    {open && <Editor<{ name: string; key?: string; channel: "email" | "layout" | "push"; project_ids?: string[]; locale: string }> title="Create template"
       description="Start with an empty draft. Choose the channel and projects that will use it." submitLabel="Create template" close={() => setOpen(false)}
       initial={{ channel: "email", locale: "en", project_ids: canEdit(workspace.project) ? [workspace.project!.id] : [] }} submit={async (values) => {
         const slug = values.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 90);
         const key = values.key || (/^[a-z]/.test(slug) ? slug : `template-${slug || crypto.randomUUID().slice(0, 8)}`);
-        const item = await authenticatedRequest<Template>(session, "/templates", "POST", { ...values, key, project_ids: values.project_ids ?? [], draft: initialDraft() });
+        const item = await authenticatedRequest<Template>(session, "/templates", "POST", { ...values, key, channel: values.channel === "layout" ? "email" : values.channel, is_layout: values.channel === "layout", project_ids: values.project_ids ?? [], draft: values.channel === "layout" ? { ...initialDraft(), html: "<!-- voxriva:body -->" } : initialDraft() });
         navigate(`/templates/${item.id}`);
       }}>
       <Form.Item name="name" label="Template name" rules={[{ required: true, whitespace: true, max: 100 }]}><Input placeholder="e.g. Account activation" autoFocus /></Form.Item>
-      <Form.Item name="channel" label="Channel"><Radio.Group className="channel-options"><Radio.Button value="email"><strong>Email</strong><small>Subject, HTML, and plain text</small></Radio.Button>
+      <Form.Item name="channel" label="Channel"><Radio.Group className="channel-options"><Radio.Button value="email"><strong>Email template</strong><small>Subject, HTML, and plain text</small></Radio.Button>
+        <Radio.Button value="layout"><strong>Email layout</strong><small>Shared header, footer, and styles</small></Radio.Button>
         <Radio.Button value="push"><strong>Push notification</strong><small>Title, body, and custom data</small></Radio.Button></Radio.Group></Form.Item>
       <Form.Item name="locale" label="Primary language" rules={[{ required: true }]} extra="Start with an empty draft in this language. Add translations later."><LanguageSelect label="Primary language" /></Form.Item>
       <Form.Item name="project_ids" label="Connected projects" extra="The same template can be used by more than one project."
@@ -96,14 +98,17 @@ export function TemplateEditorPage({ session }: { session: Session }) {
   const query = useRecords<Template>(`${path}${selectedBranch ? `?branch_id=${encodeURIComponent(selectedBranch)}` : ""}`);
   const [dirty, setDirty] = useState(false);
   const item = query.data?.data;
+  const [selection, setSelection] = useState<{ branch: string; target: PreviewTarget }>();
+  const target = item && selection?.branch === item.branch_id ? selection.target : undefined;
   return <div className="template-editor-page"><header className="page-heading"><Link to="/templates">← Back to templates</Link><Title>{item?.name ?? "Template editor"}</Title><p>{item?.key}</p></header>
     {(query.isPending || !query.isFetchedAfterMount) && <Skeleton active />}
     {query.error && <Alert type="error" message={errorMessage(query.error)} />}
     {item && query.isFetchedAfterMount && <><TemplateConnections item={item} session={session} refresh={query.refetch} />
       {!item.editable && <Alert type="info" message="Preview access. Editing a shared template requires editor access in every connected project." />}
-      <TemplateLifecycle item={item} session={session} dirty={dirty} refresh={query.refetch} onBranch={(id) => {
+      <TemplateLifecycle key={item.id} target={target} item={item} session={session} dirty={dirty} refresh={query.refetch} onBranch={(id) => {
+        if (id === item.branch_id) return true;
         if (dirty && !window.confirm("Discard unsaved changes and switch branch?")) return false;
         const next = new URLSearchParams(params); next.set("branch", id); next.delete("locale"); next.delete("tab"); setParams(next); setDirty(false); return true;
-      }}><DraftEditor key={item.branch_id} item={item} session={session} editable={item.editable} path={path} onDirty={setDirty} onSaved={query.refetch} /></TemplateLifecycle></>}
+      }} renderDraft={(active) => <DraftEditor active={active} onTargetChange={(value) => setSelection({ branch: item.branch_id, target: value })} key={item.branch_id} item={item} session={session} editable={item.editable} path={path} onDirty={setDirty} onSaved={query.refetch} />} /></>}
   </div>;
 }
