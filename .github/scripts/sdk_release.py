@@ -165,7 +165,14 @@ def metadata_check(raw, root, version):
     require(metadata.get_all("License-File") == ["LICENSE"], "SDK license file must be declared")
     dependencies = [re.sub(r"\s+", "", value) for value in metadata.get_all("Requires-Dist", [])]
     require(dependencies in (["httpx<1,>=0.28.1"], ["httpx>=0.28.1,<1"]), "Unexpected SDK runtime dependencies")
-    require(metadata.get_payload().strip() == source_bytes(root, "README.md").decode().strip(),
+    # Core metadata stores its description as raw UTF-8 without MIME charset
+    # headers. Message.get_payload() otherwise substitutes non-ASCII characters.
+    _, separator, body = raw.replace(b"\r\n", b"\n").partition(b"\n\n")
+    require(separator, "Package metadata is missing its description body")
+    description = body.decode("utf-8")
+    readme = source_bytes(root, "README.md").decode("utf-8").replace("\r\n", "\n")
+    # setuptools 80.9.0 appends one final newline only when the README lacks it.
+    require(description == readme or (not readme.endswith("\n") and description == readme + "\n"),
             "Package description differs from the checked SDK README")
 
 

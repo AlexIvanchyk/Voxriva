@@ -478,7 +478,11 @@ def create_github_release(
     root: Path, evidence: Path, notes: Path, version: str, revision: str,
     app: str, mcp: str, source_run: dict[str, str] | None = None,
 ) -> None:
-    from source_release import release_notes, require_absent_release, require_remote_revision
+    from source_release import (
+        release_notes,
+        require_absent_release,
+        require_remote_revision,
+    )
 
     if os.environ.get("GITHUB_REF") != f"refs/tags/v{version}":
         raise ValueError("GitHub release publication requires the matching version tag")
